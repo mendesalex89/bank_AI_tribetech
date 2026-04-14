@@ -126,9 +126,17 @@ Host:       localhost  |  Porta: 5450
 
 | Tabela | Registos | Descrição |
 |---|---|---|
-| `loans` | 2.260.668 | Empréstimos Lending Club com scores PD, LGD, EAD |
+| `loans` | 199.850 | Empréstimos Lending Club com scores PD, LGD, EAD |
 | `model_metrics` | 9 | Métricas de validação EBA por modelo |
 | `portfolio_snapshots` | 7 | Resumo por grade (A–G) |
+
+**Visão geral do portfólio:**
+
+![DBeaver Overview](docs/screenshots/dbeaver_overview.png)
+
+**Análise por Grade IRB:**
+
+![DBeaver Grades](docs/screenshots/dbeaver_grades.png)
 
 ---
 
