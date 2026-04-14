@@ -90,11 +90,11 @@
     </div>
     <div class="col-6 col-md-4 col-xl-2">
         <div class="kpi-card-lg">
-            <div class="kpi-icon" style="background:rgba(249,115,22,0.15);color:var(--trb-orange)"><i class="bi bi-currency-dollar"></i></div>
+            <div class="kpi-icon" style="background:rgba(249,115,22,0.15);color:var(--trb-orange)"><i class="bi bi-currency-euro"></i></div>
             <div>
                 <div class="kpi-lbl">Exposição</div>
                 <div class="kpi-val" id="kpi-exposure">—</div>
-                <div class="kpi-sub">milhões USD</div>
+                <div class="kpi-sub">mil milhões EUR</div>
             </div>
         </div>
     </div>
@@ -124,7 +124,7 @@
             <div>
                 <div class="kpi-lbl">Perda Realiz.</div>
                 <div class="kpi-val" id="kpi-rl">—</div>
-                <div class="kpi-sub">milhões USD</div>
+                <div class="kpi-sub">milhões EUR</div>
             </div>
         </div>
     </div>
@@ -134,7 +134,7 @@
             <div>
                 <div class="kpi-lbl">Capital Mín.</div>
                 <div class="kpi-val" id="kpi-cap">—</div>
-                <div class="kpi-sub">8% RWA (Basel)</div>
+                <div class="kpi-sub">8% RWA (Basileia)</div>
             </div>
         </div>
     </div>
@@ -305,11 +305,11 @@ const TRB = {
 // Formatters
 // ============================================================
 const fmt = {
-    num:   n => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(0)+'K' : n?.toLocaleString('pt-PT'),
-    money: n => n >= 1e9 ? '$'+(n/1e9).toFixed(1)+'B' : n >= 1e6 ? '$'+(n/1e6).toFixed(0)+'M' : '$'+n?.toLocaleString('pt-PT'),
-    moneyM: n => n != null ? '$'+(+n).toFixed(1)+'M' : '—',
-    pct:   n => (+n).toFixed(1)+'%',
-    dec:   (n,d=4) => (+n).toFixed(d),
+    num:    n => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(0)+'K' : n?.toLocaleString('pt-PT'),
+    money:  n => n >= 1e9 ? '€'+(n/1e9).toFixed(1)+'B' : n >= 1e6 ? '€'+(n/1e6).toFixed(0)+'M' : '€'+n?.toLocaleString('pt-PT'),
+    moneyM: n => { if (n == null) return '—'; const v = +n; return v >= 1000 ? '€'+(v/1000).toFixed(1)+'B' : '€'+v.toFixed(1)+'M'; },
+    pct:    n => (+n).toFixed(1)+'%',
+    dec:    (n,d=4) => (+n).toFixed(d),
 };
 
 // ============================================================
@@ -336,7 +336,7 @@ function renderModelMetrics(data) {
         { key: 'EAD', label: 'Modelo EAD', sub: 'GBM Regressor', icon: 'currency-exchange', color: 'blue',
           metrics: [
             { k:'r2',   l:'R²',   fmt: v => (+v).toFixed(4), ok: v => v>=0.80, warn: v => v>=0.50 },
-            { k:'rmse', l:'RMSE (USD)', fmt: v => (+v).toFixed(1), ok: v => v<=1000, warn: v => v<=5000, low_better: true },
+            { k:'rmse', l:'RMSE (EUR)', fmt: v => (+v).toFixed(1), ok: v => v<=1000, warn: v => v<=5000, low_better: true },
           ]
         },
     ];
@@ -401,7 +401,7 @@ async function loadDashboard() {
         document.getElementById('kpi-total').textContent     = fmt.num(kpi.total_loans);
         document.getElementById('kpi-total-inline').textContent = fmt.num(kpi.total_loans);
         document.getElementById('kpi-exposure').textContent  = fmt.moneyM(kpi.total_exposure_m);
-        document.getElementById('kpi-exposure-inline').textContent = '$' + kpi.total_exposure_m + 'M';
+        document.getElementById('kpi-exposure-inline').textContent = fmt.moneyM(kpi.total_exposure_m);
         document.getElementById('kpi-dr').textContent        = kpi.default_rate_pct + '%';
         document.getElementById('kpi-fico').textContent      = kpi.avg_fico;
         document.getElementById('kpi-rl').textContent        = fmt.moneyM(kpi.realised_loss_m);
@@ -426,7 +426,7 @@ async function loadDashboard() {
                         borderWidth: 2, borderRadius: 5, yAxisID: 'y',
                     },
                     {
-                        label: 'Perda Realizada (M USD)',
+                        label: 'Perda Realizada (M EUR)',
                         data: elData.map(r => +r.realised_loss_m),
                         backgroundColor: TRB.red+'33',
                         borderColor: TRB.red,
@@ -434,7 +434,7 @@ async function loadDashboard() {
                         type: 'bar',
                     },
                     {
-                        label: 'Expected Loss (M USD)',
+                        label: 'Expected Loss (M EUR)',
                         data: elData.map(r => +r.expected_loss_m),
                         borderColor: TRB.orange,
                         backgroundColor: 'transparent',
@@ -448,7 +448,7 @@ async function loadDashboard() {
                 plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12 } } },
                 scales: {
                     y:  { position: 'left',  grid: { color: TRB.grid }, ticks: { callback: v => v+'%' } },
-                    y2: { position: 'right', grid: { display: false }, ticks: { callback: v => '$'+v+'M' } },
+                    y2: { position: 'right', grid: { display: false }, ticks: { callback: v => '€'+v+'M' } },
                     x:  { grid: { display: false } },
                 }
             }
@@ -615,7 +615,7 @@ async function loadDashboard() {
                 <td style="font-family:'JetBrains Mono',monospace">${fmt.moneyM(r.exposure ? r.exposure/1e6 : null)}</td>
                 <td style="font-family:'JetBrains Mono',monospace;color:var(--trb-${rCls==='success'?'success':rCls==='warning'?'warning':'danger'})">${fmt.pct(dr*100)}</td>
                 <td>${Math.round(r.avg_fico)}</td>
-                <td style="font-family:'JetBrains Mono',monospace;color:var(--trb-orange)">${elRow.expected_loss_m ? '$'+elRow.expected_loss_m+'M' : '—'}</td>
+                <td style="font-family:'JetBrains Mono',monospace;color:var(--trb-orange)">${elRow.expected_loss_m ? '€'+elRow.expected_loss_m+'M' : '—'}</td>
                 <td><span class="alert-irb alert-irb-${rCls}" style="padding:0.2rem 0.6rem;border-radius:20px;font-size:0.7rem;display:inline-block">${risk}</span></td>
             </tr>`;
         }).join('');
