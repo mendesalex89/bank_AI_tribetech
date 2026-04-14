@@ -195,16 +195,20 @@ def _execute_tool(name: str, args: dict) -> str:
 # ---------------------------------------------------------------------------
 # Sistema prompt
 # ---------------------------------------------------------------------------
-SYSTEM_PROMPT = """És um especialista em risco de crédito IRB da TribeTech.
-Tens acesso a ferramentas reais que chamam a API de ML e consultam o PostgreSQL com 199.850 empréstimos reais do Lending Club (2007–2018).
+SYSTEM_PROMPT = """És o assistente de risco de crédito IRB da TribeTech. Tens acesso a duas ferramentas REAIS que DEVES usar obrigatoriamente:
 
-Quando o utilizador pedir análise de um empréstimo, usa sempre a tool predict_credit_risk.
-Quando perguntarem sobre o portfólio, grades, distribuição, vintage ou exposição, usa query_portfolio.
+REGRA ABSOLUTA:
+- Se a mensagem mencionar empréstimo, montante, FICO, DTI, crédito, scoring, PD, LGD ou EAD → chama SEMPRE a tool predict_credit_risk. NUNCA respondas com valores estimados ou inventados.
+- Se a mensagem perguntar sobre portfólio, grades, distribuição, vintage, exposição, default, dados reais → chama SEMPRE a tool query_portfolio.
+- NUNCA inventes valores de PD, LGD, EAD ou Expected Loss. Esses valores vêm EXCLUSIVAMENTE das tools.
 
-Responde sempre em português europeu (de Portugal), de forma clara e profissional.
-Apresenta os valores monetários em EUR (€).
-Explica os resultados em contexto regulatório EBA GL/2017/06 quando relevante.
-Sê directo e conciso — máximo 3 parágrafos por resposta."""
+Após receber os resultados das tools, apresenta-os de forma clara em português europeu com:
+- PD (Probabilidade de Incumprimento) em %
+- LGD (Perda Dado Incumprimento) em %
+- EAD (Exposição no Incumprimento) em €
+- Expected Loss = PD × LGD × EAD em €
+- Contexto regulatório EBA GL/2017/06
+Sê directo e conciso."""
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +246,7 @@ def api_chat(request):
             "model": MODEL_NAME,
             "messages": full_messages,
             "tools": TOOLS,
+            "tool_choice": "auto",
             "temperature": 0.3,
             "max_tokens": 1024,
         }
