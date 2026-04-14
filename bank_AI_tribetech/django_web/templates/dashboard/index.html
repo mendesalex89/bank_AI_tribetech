@@ -27,28 +27,36 @@
     background: var(--trb-dark-2);
     border: 1px solid var(--trb-border);
     border-radius: 12px;
-    padding: 1rem 1.25rem;
+    padding: 0.85rem 1rem;
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
+    overflow: hidden;
+    min-width: 0;
 }
 .kpi-card-lg .kpi-icon {
-    width: 46px; height: 46px; border-radius: 10px;
+    width: 38px; height: 38px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.3rem; flex-shrink: 0;
+    font-size: 1.1rem; flex-shrink: 0;
+}
+.kpi-card-lg .kpi-body {
+    min-width: 0; overflow: hidden; flex: 1;
 }
 .kpi-card-lg .kpi-val {
-    font-size: 1.5rem; font-weight: 800;
+    font-size: 1.25rem; font-weight: 800;
     font-family: 'JetBrains Mono', monospace;
     color: var(--trb-text); line-height: 1;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .kpi-card-lg .kpi-lbl {
-    font-size: 0.68rem; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.08em;
+    font-size: 0.62rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
     color: var(--trb-text-muted); margin-bottom: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .kpi-card-lg .kpi-sub {
-    font-size: 0.7rem; color: var(--trb-text-muted); margin-top: 2px;
+    font-size: 0.65rem; color: var(--trb-text-muted); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* Metric pill */
@@ -81,7 +89,7 @@
     <div class="col-6 col-md-4 col-xl-2">
         <div class="kpi-card-lg">
             <div class="kpi-icon" style="background:rgba(230,60,47,0.15);color:var(--trb-red)"><i class="bi bi-bank"></i></div>
-            <div>
+            <div class="kpi-body">
                 <div class="kpi-lbl">Empréstimos</div>
                 <div class="kpi-val" id="kpi-total">—</div>
                 <div class="kpi-sub">registos</div>
@@ -91,7 +99,7 @@
     <div class="col-6 col-md-4 col-xl-2">
         <div class="kpi-card-lg">
             <div class="kpi-icon" style="background:rgba(249,115,22,0.15);color:var(--trb-orange)"><i class="bi bi-currency-euro"></i></div>
-            <div>
+            <div class="kpi-body">
                 <div class="kpi-lbl">Exposição</div>
                 <div class="kpi-val" id="kpi-exposure">—</div>
                 <div class="kpi-sub">mil milhões EUR</div>
@@ -101,7 +109,7 @@
     <div class="col-6 col-md-4 col-xl-2">
         <div class="kpi-card-lg">
             <div class="kpi-icon" style="background:rgba(239,68,68,0.15);color:#EF4444"><i class="bi bi-exclamation-triangle-fill"></i></div>
-            <div>
+            <div class="kpi-body">
                 <div class="kpi-lbl">Taxa Default</div>
                 <div class="kpi-val" id="kpi-dr">—</div>
                 <div class="kpi-sub">histórica</div>
@@ -111,7 +119,7 @@
     <div class="col-6 col-md-4 col-xl-2">
         <div class="kpi-card-lg">
             <div class="kpi-icon" style="background:rgba(59,130,246,0.15);color:#3B82F6"><i class="bi bi-speedometer2"></i></div>
-            <div>
+            <div class="kpi-body">
                 <div class="kpi-lbl">FICO Médio</div>
                 <div class="kpi-val" id="kpi-fico">—</div>
                 <div class="kpi-sub">score médio</div>
@@ -121,7 +129,7 @@
     <div class="col-6 col-md-4 col-xl-2">
         <div class="kpi-card-lg">
             <div class="kpi-icon" style="background:rgba(34,197,94,0.15);color:#22C55E"><i class="bi bi-graph-down-arrow"></i></div>
-            <div>
+            <div class="kpi-body">
                 <div class="kpi-lbl">Perda Realiz.</div>
                 <div class="kpi-val" id="kpi-rl">—</div>
                 <div class="kpi-sub">milhões EUR</div>
@@ -131,7 +139,7 @@
     <div class="col-6 col-md-4 col-xl-2">
         <div class="kpi-card-lg">
             <div class="kpi-icon" style="background:rgba(139,92,246,0.15);color:#8B5CF6"><i class="bi bi-shield-lock-fill"></i></div>
-            <div>
+            <div class="kpi-body">
                 <div class="kpi-lbl">Capital Mín.</div>
                 <div class="kpi-val" id="kpi-cap">—</div>
                 <div class="kpi-sub">8% RWA (Basileia)</div>
