@@ -1,0 +1,99 @@
+name: CI/CD — Credit Risk IRB Platform
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  ACR_LOGIN_SERVER: tribetech2026irb.azurecr.io
+  RESOURCE_GROUP: rg-creditrisk-irb
+  DJANGO_APP:  tribetech-irb-django
+  FASTAPI_APP: tribetech-irb-fastapi
+
+jobs:
+  # ─────────────────────────────────────────────
+  # 1. Build & Push Docker images para o ACR
+  # ─────────────────────────────────────────────
+  build:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login no Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build & Push — Django
+        uses: docker/build-push-action@v5
+        with:
+          context: ./bank_AI_tribetech/django_web
+          push: true
+          tags: |
+            ${{ env.ACR_LOGIN_SERVER }}/django:latest
+            ${{ env.ACR_LOGIN_SERVER }}/django:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/django:latest
+          cache-to: type=inline
+
+      - name: Build & Push — FastAPI
+        uses: docker/build-push-action@v5
+        with:
+          context: ./bank_AI_tribetech/fastapi_ml
+          push: true
+          tags: |
+            ${{ env.ACR_LOGIN_SERVER }}/fastapi:latest
+            ${{ env.ACR_LOGIN_SERVER }}/fastapi:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/fastapi:latest
+          cache-to: type=inline
+
+  # ─────────────────────────────────────────────
+  # 2. Deploy para Azure App Service
+  # ─────────────────────────────────────────────
+  deploy:
+    name: Deploy to Azure
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Login no Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Django
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.DJANGO_APP }}
+          images: ${{ env.ACR_LOGIN_SERVER }}/django:${{ github.sha }}
+
+      - name: Deploy FastAPI
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.FASTAPI_APP }}
+          images: ${{ env.ACR_LOGIN_SERVER }}/fastapi:${{ github.sha }}
+
+      - name: Verificar saúde Django
+        run: |
+          sleep 30
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://tribetech-irb-django.azurewebsites.net/health/ || echo "000")
+          echo "Django status: $STATUS"
+          if [[ "$STATUS" != "200" ]]; then
+            echo "::warning::Django health check retornou $STATUS"
+          fi
+
+      - name: Verificar saúde FastAPI
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://tribetech-irb-fastapi.azurewebsites.net/health || echo "000")
+          echo "FastAPI status: $STATUS"
+          if [[ "$STATUS" != "200" ]]; then
+            echo "::warning::FastAPI health check retornou $STATUS"
+          fi

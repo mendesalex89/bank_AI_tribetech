@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Modelo PD — Probabilidade de Incumprimento{% endblock %}
+{% block nav_pd %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+    .score-gauge {
+        position: relative;
+        width: 180px;
+        height: 180px;
+        margin: 0 auto;
+    }
+    .score-value {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+    .score-number {
+        font-size: 2.2rem;
+        font-weight: 800;
+        font-family: 'JetBrains Mono', monospace;
+        line-height: 1;
+    }
+    .score-label-small {
+        font-size: 0.65rem;
+        color: var(--trb-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+    .input-with-value {
+        position: relative;
+    }
+    .input-with-value .range-display {
+        position: absolute;
+        right: 0;
+        top: -1.4rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--trb-orange);
+    }
+    .factor-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid var(--trb-border);
+    }
+    .factor-row:last-child { border-bottom: none; }
+    .factor-name { font-size: 0.8rem; color: var(--trb-text-muted); min-width: 140px; }
+    .factor-impact { font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; margin-left: auto; }
+    .factor-bar-wrap { flex: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1 class="page-title">Prob. de <span>Incumprimento</span></h1>
+    <p class="page-subtitle">Modelo PD — Logistic Regression + XGBoost · Scorecard IRB regulatório</p>
+</div>
+
+<div class="row g-3">
+
+    <!-- ── Formulário de entrada ── -->
+    <div class="col-lg-5">
+        <div class="card-irb">
+            <div class="card-irb-header">
+                <div class="card-icon red"><i class="bi bi-sliders"></i></div>
+                <div>
+                    <div class="card-title">Parâmetros do Mutuário</div>
+                    <div class="card-subtitle">Ajuste os sliders e veja o resultado em tempo real</div>
+                </div>
+            </div>
+
+            <form class="form-irb" id="pd-form">
+
+                <!-- FICO Score -->
+                <div class="mb-4">
+                    <label>FICO Score</label>
+                    <div class="input-with-value">
+                        <span class="range-display" id="val-fico">700</span>
+                        <input type="range" id="fico_score" name="fico_score"
+                               min="580" max="850" step="5" value="700"
+                               oninput="document.getElementById('val-fico').textContent=this.value; predictPD()">
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">580</span>
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">850</span>
+                    </div>
+                </div>
+
+                <!-- DTI -->
+                <div class="mb-4">
+                    <label>Rácio Dívida/Rendimento (DTI %)</label>
+                    <div class="input-with-value">
+                        <span class="range-display" id="val-dti">15</span>
+                        <input type="range" id="dti" name="dti"
+                               min="0" max="50" step="0.5" value="15"
+                               oninput="document.getElementById('val-dti').textContent=parseFloat(this.value).toFixed(1)+'%'; predictPD()">
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">0%</span>
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">50%</span>
+                    </div>
+                </div>
+
+                <!-- Taxa de Juro -->
+                <div class="mb-4">
+                    <label>Taxa de Juro do Empréstimo (%)</label>
+                    <div class="input-with-value">
+                        <span class="range-display" id="val-rate">12</span>
+                        <input type="range" id="int_rate" name="int_rate"
+                               min="5" max="30" step="0.5" value="12"
+                               oninput="document.getElementById('val-rate').textContent=parseFloat(this.value).toFixed(1)+'%'; predictPD()">
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">5%</span>
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">30%</span>
+                    </div>
+                </div>
+
+                <!-- Rendimento Anual -->
+                <div class="mb-4">
+                    <label>Rendimento Anual (USD)</label>
+                    <div class="input-with-value">
+                        <span class="range-display" id="val-inc">$60K</span>
+                        <input type="range" id="annual_inc" name="annual_inc"
+                               min="10000" max="300000" step="5000" value="60000"
+                               oninput="document.getElementById('val-inc').textContent='$'+(this.value/1000).toFixed(0)+'K'; predictPD()">
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">$10K</span>
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">$300K</span>
+                    </div>
+                </div>
+
+                <!-- Tempo de Emprego -->
+                <div class="mb-4">
+                    <label>Anos de Emprego</label>
+                    <div class="input-with-value">
+                        <span class="range-display" id="val-emp">5 anos</span>
+                        <input type="range" id="emp_length" name="emp_length"
+                               min="0" max="10" step="1" value="5"
+                               oninput="document.getElementById('val-emp').textContent=this.value+' anos'; predictPD()">
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">&lt;1 ano</span>
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">10+ anos</span>
+                    </div>
+                </div>
+
+                <!-- Finalidade -->
+                <div class="mb-3">
+                    <label>Finalidade do Empréstimo</label>
+                    <select id="purpose" name="purpose" class="form-select" onchange="predictPD()">
+                        <option value="debt_consolidation">Consolidação de dívida</option>
+                        <option value="credit_card">Cartão de crédito</option>
+                        <option value="home_improvement">Melhorias habitacionais</option>
+                        <option value="major_purchase">Compra de activo</option>
+                        <option value="small_business">Pequeno negócio</option>
+                        <option value="other">Outro</option>
+                    </select>
+                </div>
+
+                <!-- Propriedade -->
+                <div class="mb-3">
+                    <label>Situação Habitacional</label>
+                    <select id="home_ownership" name="home_ownership" class="form-select" onchange="predictPD()">
+                        <option value="MORTGAGE">Hipoteca</option>
+                        <option value="RENT">Arrendamento</option>
+                        <option value="OWN">Proprietário</option>
+                    </select>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Resultado ── -->
+    <div class="col-lg-7">
+
+        <!-- Gauge + Score -->
+        <div class="card-irb mb-3">
+            <div class="row align-items-center">
+                <div class="col-md-5 text-center py-2">
+                    <div class="score-gauge">
+                        <canvas id="gaugeChart" width="180" height="180"></canvas>
+                        <div class="score-value">
+                            <div class="score-number" id="pd-value" style="color:var(--trb-red)">—</div>
+                            <div class="score-label-small">Prob. Default</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="kpi-card" style="padding:1rem">
+                                <div class="kpi-label">Scorecard</div>
+                                <div class="kpi-value" id="score-value" style="font-size:1.5rem">—</div>
+                                <div class="kpi-delta" id="score-delta">pts</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="kpi-card" style="padding:1rem">
+                                <div class="kpi-label">Grade IRB</div>
+                                <div class="kpi-value" id="grade-value" style="font-size:1.5rem">—</div>
+                                <div class="kpi-delta" id="grade-delta">rating interno</div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div id="risk-alert" class="alert-irb" style="display:none">
+                                <i class="bi bi-info-circle-fill"></i>
+                                <span id="risk-message"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Factores de Risco -->
+        <div class="card-irb mb-3">
+            <div class="card-irb-header">
+                <div class="card-icon orange"><i class="bi bi-list-stars"></i></div>
+                <div>
+                    <div class="card-title">Factores de Risco</div>
+                    <div class="card-subtitle">Contribuição de cada variável para a PD</div>
+                </div>
+            </div>
+
+            <div id="factors-list">
+                <!-- preenchido por JS -->
+            </div>
+        </div>
+
+        <!-- Gráfico histórico PD por Grade -->
+        <div class="card-irb">
+            <div class="card-irb-header">
+                <div class="card-icon blue"><i class="bi bi-graph-up"></i></div>
+                <div>
+                    <div class="card-title">PD Observada vs. Modelada</div>
+                    <div class="card-subtitle">Comparação com médias históricas Lending Club</div>
+                </div>
+            </div>
+            <canvas id="chartPDHist" height="180"></canvas>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+Chart.defaults.color = '#8B93A8';
+Chart.defaults.borderColor = '#2E3448';
+
+// Cores por grade
+const GRADE_COLORS = {
+    A:'#22C55E', B:'#3B82F6', C:'#F59E0B',
+    D:'#F97316', E:'#EF4444', F:'#E63C2F', G:'#64748B'
+};
+
+// Gauge doughnut
+let gaugeChart = new Chart('gaugeChart', {
+    type: 'doughnut',
+    data: {
+        datasets: [{
+            data: [0, 100],
+            backgroundColor: ['#E63C2F', '#1C2030'],
+            borderWidth: 0,
+            circumference: 240,
+            rotation: -120,
+        }]
+    },
+    options: {
+        cutout: '75%',
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        animation: { duration: 400 },
+    }
+});
+
+// Gráfico histórico
+const histGrades  = ['A','B','C','D','E','F','G'];
+const histPD_obs  = [3.0, 6.9, 11.5, 17.4, 23.1, 28.9, 32.2];
+const histPD_mdl  = [3.1, 7.1, 11.8, 17.1, 23.4, 28.5, 31.9];
+
+let histChart = new Chart('chartPDHist', {
+    type: 'bar',
+    data: {
+        labels: histGrades,
+        datasets: [
+            {
+                label: 'PD Observada (%)',
+                data: histPD_obs,
+                backgroundColor: '#3B82F644',
+                borderColor: '#3B82F6',
+                borderWidth: 2,
+                borderRadius: 4,
+            },
+            {
+                label: 'PD Modelada (%)',
+                data: histPD_mdl,
+                type: 'line',
+                borderColor: '#E63C2F',
+                backgroundColor: 'transparent',
+                pointBackgroundColor: '#E63C2F',
+                pointRadius: 5,
+                tension: 0.3,
+            }
+        ]
+    },
+    options: {
+        plugins: { legend: { display: true, position: 'top' } },
+        scales: {
+            y: { grid: { color: '#2E3448' }, ticks: { callback: v => v+'%' } },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+// Marcador da predição actual
+let currentMarkerPlugin = null;
+
+// ── Predict PD ──
+async function predictPD() {
+    const payload = {
+        fico_score:     parseFloat(document.getElementById('fico_score').value),
+        dti:            parseFloat(document.getElementById('dti').value),
+        int_rate:       parseFloat(document.getElementById('int_rate').value),
+        annual_inc:     parseFloat(document.getElementById('annual_inc').value),
+        emp_length:     parseFloat(document.getElementById('emp_length').value),
+        purpose:        document.getElementById('purpose').value,
+        home_ownership: document.getElementById('home_ownership').value,
+    };
+
+    try {
+        const resp = await fetch('/scoring/api/predict/pd/', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+            body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        updateResults(data);
+    } catch(e) {
+        console.error('Erro na predição PD:', e);
+    }
+}
+
+function updateResults(data) {
+    const pd    = data.pd || 0;
+    const score = data.score || 0;
+    const grade = data.grade || '—';
+
+    // Gauge
+    gaugeChart.data.datasets[0].data = [pd * 100, 100 - pd * 100];
+    const gradeColor = GRADE_COLORS[grade] || '#E63C2F';
+    gaugeChart.data.datasets[0].backgroundColor[0] = gradeColor;
+    gaugeChart.update();
+
+    // Valores
+    document.getElementById('pd-value').textContent = (pd * 100).toFixed(2) + '%';
+    document.getElementById('pd-value').style.color = gradeColor;
+    document.getElementById('score-value').textContent = score;
+    document.getElementById('grade-value').textContent = grade;
+    document.getElementById('grade-value').style.color = gradeColor;
+
+    // Alerta de risco
+    const alertEl = document.getElementById('risk-alert');
+    const msgEl   = document.getElementById('risk-message');
+    alertEl.style.display = 'flex';
+
+    if (pd < 0.05) {
+        alertEl.className = 'alert-irb alert-irb-success';
+        msgEl.textContent = `Risco Baixo — PD de ${(pd*100).toFixed(2)}% dentro dos limites regulatórios. Proposta elegível para aprovação.`;
+    } else if (pd < 0.15) {
+        alertEl.className = 'alert-irb alert-irb-warning';
+        msgEl.textContent = `Risco Moderado — PD de ${(pd*100).toFixed(2)}%. Requerer garantias adicionais ou ajustar condições.`;
+    } else {
+        alertEl.className = 'alert-irb alert-irb-danger';
+        msgEl.textContent = `Risco Elevado — PD de ${(pd*100).toFixed(2)}%. Candidato não recomendado com perfil actual.`;
+    }
+
+    // Factores
+    const factors = calcFactors(payload => payload, data);
+    renderFactors(factors);
+
+    // Marca no gráfico histórico
+    updateHistMarker(grade, pd);
+}
+
+function calcFactors(_, data) {
+    // Factores illustrativos com contribuições
+    const fico  = parseFloat(document.getElementById('fico_score').value);
+    const dti   = parseFloat(document.getElementById('dti').value);
+    const rate  = parseFloat(document.getElementById('int_rate').value);
+    const inc   = parseFloat(document.getElementById('annual_inc').value);
+    const emp   = parseFloat(document.getElementById('emp_length').value);
+
+    const ficoImpact = (700 - fico) * 0.015;
+    const dtiImpact  = dti * 0.04;
+    const rateImpact = rate * 0.07;
+    const incImpact  = -Math.min(inc / 10000, 5) * 0.12;
+    const empImpact  = -emp * 0.03;
+
+    const total = Math.abs(ficoImpact) + Math.abs(dtiImpact) + Math.abs(rateImpact)
+                + Math.abs(incImpact) + Math.abs(empImpact);
+
+    return [
+        { name: 'FICO Score',          value: ficoImpact, pct: Math.abs(ficoImpact)/total },
+        { name: 'Rácio DTI',           value: dtiImpact,  pct: Math.abs(dtiImpact)/total },
+        { name: 'Taxa de Juro',        value: rateImpact, pct: Math.abs(rateImpact)/total },
+        { name: 'Rendimento Anual',    value: incImpact,  pct: Math.abs(incImpact)/total },
+        { name: 'Tempo de Emprego',    value: empImpact,  pct: Math.abs(empImpact)/total },
+    ].sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+}
+
+function renderFactors(factors) {
+    const container = document.getElementById('factors-list');
+    container.innerHTML = factors.map(f => {
+        const isPositive = f.value > 0;  // positivo = aumenta PD = mau
+        const color = isPositive ? 'var(--trb-danger)' : 'var(--trb-success)';
+        const icon  = isPositive ? 'bi-arrow-up' : 'bi-arrow-down';
+        const sign  = isPositive ? '+' : '';
+
+        return `<div class="factor-row">
+            <span class="factor-name">${f.name}</span>
+            <div class="factor-bar-wrap">
+                <div class="metric-bar">
+                    <div class="metric-bar-fill" style="width:${(f.pct*100).toFixed(0)}%;background:${color}"></div>
+                </div>
+            </div>
+            <span class="factor-impact" style="color:${color}">
+                <i class="bi ${icon}"></i> ${sign}${(f.value).toFixed(3)}
+            </span>
+        </div>`;
+    }).join('');
+}
+
+function updateHistMarker(grade, pd) {
+    const idx = ['A','B','C','D','E','F','G'].indexOf(grade);
+    if (idx === -1) return;
+
+    // Actualiza a linha do modelo com o ponto corrente destacado
+    const radii = [3,3,3,3,3,3,3];
+    const bgColors = Array(7).fill('#E63C2F');
+    if (idx >= 0) {
+        radii[idx] = 9;
+        bgColors[idx] = '#FFFFFF';
+    }
+
+    histChart.data.datasets[1].pointRadius = radii;
+    histChart.data.datasets[1].pointBackgroundColor = bgColors;
+    histChart.data.datasets[1].data = histPD_mdl.map((v, i) =>
+        i === idx ? (pd * 100).toFixed(2) : v
+    );
+    histChart.update();
+}
+
+function getCookie(name) {
+    const val = `; ${document.cookie}`;
+    const parts = val.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+}
+
+// Primeiro cálculo automático
+predictPD();
+</script>
+{% endblock %}

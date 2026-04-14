@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Modelo LGD — Perda Dado Incumprimento{% endblock %}
+{% block nav_lgd %}active{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1 class="page-title">Perda Dado <span>Incumprimento</span></h1>
+    <p class="page-subtitle">Modelo LGD — Two-Stage (Logistic + Beta Regression) · IRB Avançado</p>
+</div>
+
+<div class="row g-3">
+
+    <!-- Formulário -->
+    <div class="col-lg-5">
+        <div class="card-irb">
+            <div class="card-irb-header">
+                <div class="card-icon orange"><i class="bi bi-sliders"></i></div>
+                <div>
+                    <div class="card-title">Parâmetros de Recuperação</div>
+                    <div class="card-subtitle">Ajuste os parâmetros para calcular a LGD em tempo real</div>
+                </div>
+            </div>
+
+            <form class="form-irb" id="lgd-form">
+
+                <!-- Montante do empréstimo -->
+                <div class="mb-4">
+                    <label>Montante do Empréstimo (USD)</label>
+                    <div class="input-with-value" style="position:relative">
+                        <span style="position:absolute;right:0;top:-1.4rem;font-size:0.75rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--trb-orange)" id="val-loan">$10K</span>
+                        <input type="range" id="loan_amnt" min="1000" max="100000" step="1000" value="10000"
+                               oninput="document.getElementById('val-loan').textContent='$'+(this.value/1000).toFixed(0)+'K';predictLGD()">
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">$1K</span>
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">$100K</span>
+                    </div>
+                </div>
+
+                <!-- Valor colateral -->
+                <div class="mb-4">
+                    <label>Valor da Garantia (Colateral USD)</label>
+                    <div class="input-with-value" style="position:relative">
+                        <span style="position:absolute;right:0;top:-1.4rem;font-size:0.75rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--trb-orange)" id="val-coll">$0</span>
+                        <input type="range" id="collateral_value" min="0" max="200000" step="5000" value="0"
+                               oninput="document.getElementById('val-coll').textContent='$'+(this.value/1000).toFixed(0)+'K';predictLGD()">
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">$0</span>
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">$200K</span>
+                    </div>
+                </div>
+
+                <!-- Recuperações previstas -->
+                <div class="mb-4">
+                    <label>Recuperações Estimadas (USD)</label>
+                    <div class="input-with-value" style="position:relative">
+                        <span style="position:absolute;right:0;top:-1.4rem;font-size:0.75rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--trb-orange)" id="val-rec">$0</span>
+                        <input type="range" id="recoveries" min="0" max="50000" step="500" value="0"
+                               oninput="document.getElementById('val-rec').textContent='$'+(this.value/1000).toFixed(1)+'K';predictLGD()">
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">$0</span>
+                        <span style="font-size:0.65rem;color:var(--trb-text-muted)">$50K</span>
+                    </div>
+                </div>
+
+                <!-- Situação habitacional -->
+                <div class="mb-3">
+                    <label>Situação Habitacional</label>
+                    <select id="home_ownership" class="form-select" onchange="predictLGD()">
+                        <option value="MORTGAGE">Hipoteca</option>
+                        <option value="OWN">Proprietário</option>
+                        <option value="RENT">Arrendamento</option>
+                    </select>
+                </div>
+
+                <!-- Tipo de crédito -->
+                <div class="mb-3">
+                    <label>Tipo de Crédito</label>
+                    <select id="credit_type" class="form-select" onchange="predictLGD()">
+                        <option value="unsecured">Crédito Pessoal (Sem Garantia)</option>
+                        <option value="secured">Crédito com Garantia</option>
+                        <option value="mortgage">Crédito Hipotecário</option>
+                    </select>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- Resultados -->
+    <div class="col-lg-7">
+
+        <!-- KPIs LGD -->
+        <div class="row g-3 mb-3">
+            <div class="col-sm-4">
+                <div class="kpi-card">
+                    <div class="kpi-label">LGD</div>
+                    <div class="kpi-value" id="lgd-pct" style="color:var(--trb-red)">—</div>
+                    <div class="kpi-delta">perda esperada</div>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="kpi-card">
+                    <div class="kpi-label">Taxa de Recuperação</div>
+                    <div class="kpi-value" id="recovery-pct" style="color:var(--trb-success)">—</div>
+                    <div class="kpi-delta">recuperação esperada</div>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="kpi-card">
+                    <div class="kpi-label">Perda Esperada</div>
+                    <div class="kpi-value" id="expected-loss" style="color:var(--trb-warning)">—</div>
+                    <div class="kpi-delta">USD absoluto</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerta -->
+        <div id="lgd-alert" class="alert-irb mb-3" style="display:none">
+            <i class="bi bi-info-circle-fill"></i>
+            <span id="lgd-message"></span>
+        </div>
+
+        <!-- Gráfico: LGD vs Colateral -->
+        <div class="card-irb mb-3">
+            <div class="card-irb-header">
+                <div class="card-icon red"><i class="bi bi-graph-down-arrow"></i></div>
+                <div>
+                    <div class="card-title">LGD vs. Rácio de Cobertura</div>
+                    <div class="card-subtitle">Impacto do colateral na perda esperada</div>
+                </div>
+            </div>
+            <canvas id="chartLGDColl" height="180"></canvas>
+        </div>
+
+        <!-- Gráfico: Distribuição LGD histórica -->
+        <div class="card-irb">
+            <div class="card-irb-header">
+                <div class="card-icon orange"><i class="bi bi-bar-chart-fill"></i></div>
+                <div>
+                    <div class="card-title">Distribuição LGD Histórica</div>
+                    <div class="card-subtitle">Distribuição Beta dos valores LGD observados</div>
+                </div>
+            </div>
+            <canvas id="chartLGDDist" height="160"></canvas>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+Chart.defaults.color = '#8B93A8';
+Chart.defaults.borderColor = '#2E3448';
+
+// Gráfico LGD vs Cobertura
+const collRatios = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+let lgdCollChart = new Chart('chartLGDColl', {
+    type: 'line',
+    data: {
+        labels: collRatios.map(r => (r*100).toFixed(0)+'%'),
+        datasets: [
+            {
+                label: 'LGD Hipoteca (%)',
+                data: collRatios.map(r => ((0.45 - r*0.30)*100).toFixed(1)),
+                borderColor: '#3B82F6', backgroundColor: '#3B82F622', fill:true, tension:0.4,
+            },
+            {
+                label: 'LGD Arrendamento (%)',
+                data: collRatios.map(r => ((0.55 - r*0.30)*100).toFixed(1)),
+                borderColor: '#E63C2F', backgroundColor: '#E63C2F22', fill:true, tension:0.4,
+            },
+            {
+                label: 'Valor Actual',
+                data: Array(11).fill(null),
+                type: 'scatter',
+                pointRadius: 10,
+                pointBackgroundColor: '#F97316',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+            }
+        ]
+    },
+    options: {
+        plugins: { legend: { display: true } },
+        scales: {
+            y: { grid: { color: '#2E3448' }, ticks: { callback: v=>v+'%' }, min:0, max:100 },
+            x: { grid: { display: false }, title: { display:true, text:'Rácio Cobertura Colateral' } }
+        }
+    }
+});
+
+// Distribuição Beta (simulada)
+function betaDistPoints(alpha, beta, n=50) {
+    const pts = [];
+    for (let i=1; i<n; i++) {
+        const x = i/n;
+        // Aprox. da densidade beta
+        const density = Math.pow(x, alpha-1) * Math.pow(1-x, beta-1);
+        pts.push({ x: (x*100).toFixed(1), y: density });
+    }
+    const max = Math.max(...pts.map(p=>p.y));
+    return pts.map(p => ({ x: p.x, y: (p.y/max*100).toFixed(2) }));
+}
+
+const betaData = betaDistPoints(2, 4); // LGD típica
+
+new Chart('chartLGDDist', {
+    type: 'bar',
+    data: {
+        labels: betaData.map(p => p.x+'%'),
+        datasets: [{
+            label: 'Densidade LGD',
+            data: betaData.map(p => p.y),
+            backgroundColor: '#F9731622',
+            borderColor: '#F97316',
+            borderWidth: 1,
+            borderRadius: 2,
+        }]
+    },
+    options: {
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { display: false },
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } }
+        }
+    }
+});
+
+async function predictLGD() {
+    const loanAmnt  = parseFloat(document.getElementById('loan_amnt').value);
+    const collVal   = parseFloat(document.getElementById('collateral_value').value);
+    const recov     = parseFloat(document.getElementById('recoveries').value);
+    const homeOwn   = document.getElementById('home_ownership').value;
+
+    const payload = { loan_amnt: loanAmnt, collateral_value: collVal,
+                      recoveries: recov, home_ownership: homeOwn };
+
+    try {
+        const resp = await fetch('/scoring/api/predict/lgd/', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+
+        document.getElementById('lgd-pct').textContent = (data.lgd*100).toFixed(2)+'%';
+        document.getElementById('recovery-pct').textContent = (data.recovery_rate*100).toFixed(2)+'%';
+        document.getElementById('expected-loss').textContent = '$'+(data.expected_loss||0).toLocaleString('pt-PT', {maximumFractionDigits:0});
+
+        // Alerta
+        const alertEl = document.getElementById('lgd-alert');
+        const msgEl   = document.getElementById('lgd-message');
+        alertEl.style.display = 'flex';
+        if (data.lgd < 0.30) {
+            alertEl.className = 'alert-irb alert-irb-success';
+            msgEl.textContent = `LGD baixa (${(data.lgd*100).toFixed(1)}%) — boa cobertura de colateral. Perda esperada controlada.`;
+        } else if (data.lgd < 0.60) {
+            alertEl.className = 'alert-irb alert-irb-warning';
+            msgEl.textContent = `LGD moderada (${(data.lgd*100).toFixed(1)}%) — considerar reforço de garantias.`;
+        } else {
+            alertEl.className = 'alert-irb alert-irb-danger';
+            msgEl.textContent = `LGD elevada (${(data.lgd*100).toFixed(1)}%) — risco de recuperação muito baixo. Exige atenção regulatória.`;
+        }
+
+        // Actualiza ponto no gráfico
+        const collRatio = Math.min(collVal / Math.max(loanAmnt, 1), 1.0);
+        const xIdx = Math.round(collRatio * 10);
+        const newPoints = Array(11).fill(null);
+        newPoints[xIdx] = (data.lgd * 100).toFixed(1);
+        lgdCollChart.data.datasets[2].data = newPoints;
+        lgdCollChart.update();
+
+    } catch(e) { console.error('Erro LGD:', e); }
+}
+
+predictLGD();
+</script>
+{% endblock %}

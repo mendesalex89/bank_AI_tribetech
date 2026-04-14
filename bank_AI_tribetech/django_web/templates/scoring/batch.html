@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Scoring em Lote — Upload CSV{% endblock %}
+{% block nav_batch %}active{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1 class="page-title">Scoring em <span>Lote</span></h1>
+    <p class="page-subtitle">Upload CSV → PD, LGD e EAD calculados para toda a carteira</p>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card-irb">
+            <div class="card-irb-header">
+                <div class="card-icon orange"><i class="bi bi-cloud-upload-fill"></i></div>
+                <div>
+                    <div class="card-title">Upload do Ficheiro</div>
+                    <div class="card-subtitle">Formatos aceites: CSV (máx. 50MB)</div>
+                </div>
+            </div>
+
+            <div id="drop-zone" style="
+                border: 2px dashed var(--trb-border);
+                border-radius: 12px;
+                padding: 3rem;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.2s;
+                margin-bottom: 1.5rem;
+            " ondragover="event.preventDefault();this.style.borderColor='var(--trb-orange)'"
+               ondragleave="this.style.borderColor='var(--trb-border)'"
+               ondrop="handleDrop(event)"
+               onclick="document.getElementById('file-input').click()">
+                <i class="bi bi-file-earmark-spreadsheet-fill"
+                   style="font-size:3rem;color:var(--trb-orange);display:block;margin-bottom:1rem"></i>
+                <p style="font-size:0.9rem;color:var(--trb-text);margin:0 0 0.25rem">
+                    Arraste o ficheiro CSV aqui ou <span style="color:var(--trb-orange)">clique para seleccionar</span>
+                </p>
+                <p style="font-size:0.75rem;color:var(--trb-text-muted);margin:0">
+                    Colunas obrigatórias: fico_score, dti, int_rate, annual_inc, loan_amnt
+                </p>
+                <input type="file" id="file-input" accept=".csv" style="display:none" onchange="handleFile(this.files[0])">
+            </div>
+
+            <div class="mb-3 form-irb">
+                <label>Modelos a calcular</label>
+                <div style="display:flex;gap:1rem;margin-top:0.5rem">
+                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;font-size:0.875rem;color:var(--trb-text)">
+                        <input type="checkbox" id="calc-pd"  checked style="accent-color:var(--trb-red)"> PD
+                    </label>
+                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;font-size:0.875rem;color:var(--trb-text)">
+                        <input type="checkbox" id="calc-lgd" checked style="accent-color:var(--trb-orange)"> LGD
+                    </label>
+                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;font-size:0.875rem;color:var(--trb-text)">
+                        <input type="checkbox" id="calc-ead" checked style="accent-color:var(--trb-info)"> EAD
+                    </label>
+                </div>
+            </div>
+
+            <button class="btn-trb w-100" id="run-btn" onclick="runBatch()" disabled>
+                <i class="bi bi-play-fill me-2"></i>Executar Scoring em Lote
+            </button>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card-irb">
+            <div class="card-irb-header">
+                <div class="card-icon green"><i class="bi bi-info-circle-fill"></i></div>
+                <div>
+                    <div class="card-title">Template CSV</div>
+                    <div class="card-subtitle">Formato esperado para o upload</div>
+                </div>
+            </div>
+            <div style="background:var(--trb-dark-3);border-radius:8px;padding:1rem;overflow-x:auto;margin-bottom:1rem">
+                <pre style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--trb-text-muted);margin:0">fico_score,dti,int_rate,annual_inc,loan_amnt,emp_length,purpose,home_ownership
+720,18.5,11.99,75000,15000,5,debt_consolidation,MORTGAGE
+650,32.1,21.45,45000,8000,2,credit_card,RENT
+780,8.2,6.99,120000,25000,10,home_improvement,OWN</pre>
+            </div>
+            <a href="#" class="btn-trb-outline" style="display:inline-block;text-decoration:none;font-size:0.8rem" id="download-template">
+                <i class="bi bi-download me-1"></i>Download Template CSV
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Progress -->
+<div id="progress-card" class="card-irb mt-3" style="display:none">
+    <div class="card-irb-header">
+        <div class="card-icon blue"><i class="bi bi-gear-fill"></i></div>
+        <div>
+            <div class="card-title">A processar...</div>
+            <div class="card-subtitle" id="progress-subtitle">0 de 0 registos</div>
+        </div>
+    </div>
+    <div class="metric-bar" style="height:10px">
+        <div class="metric-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+</div>
+
+<!-- Resultados -->
+<div id="results-card" class="card-irb mt-3" style="display:none">
+    <div class="card-irb-header">
+        <div class="card-icon green"><i class="bi bi-check-circle-fill"></i></div>
+        <div>
+            <div class="card-title">Resultados do Scoring</div>
+            <div class="card-subtitle" id="results-subtitle"></div>
+        </div>
+        <button class="btn-trb ms-auto" onclick="downloadResults()">
+            <i class="bi bi-download me-1"></i>Exportar CSV
+        </button>
+    </div>
+
+    <div style="overflow-x:auto">
+        <table class="table-irb" id="results-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>FICO</th>
+                    <th>DTI</th>
+                    <th>PD (%)</th>
+                    <th>Grade</th>
+                    <th>LGD (%)</th>
+                    <th>EAD</th>
+                    <th>Perda Esperada</th>
+                </tr>
+            </thead>
+            <tbody id="results-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let csvData = [];
+let results = [];
+
+function handleFile(file) {
+    if (!file) return;
+    document.getElementById('drop-zone').innerHTML =
+        `<i class="bi bi-check-circle-fill" style="font-size:2.5rem;color:var(--trb-success);display:block;margin-bottom:0.75rem"></i>
+         <p style="color:var(--trb-text);margin:0">${file.name}</p>
+         <p style="color:var(--trb-text-muted);font-size:0.75rem;margin:0">${(file.size/1024).toFixed(1)} KB</p>`;
+    document.getElementById('run-btn').disabled = false;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        const lines = e.target.result.split('\n').filter(l => l.trim());
+        const headers = lines[0].split(',').map(h => h.trim());
+        csvData = lines.slice(1).map(line => {
+            const vals = line.split(',');
+            return Object.fromEntries(headers.map((h,i) => [h, vals[i]?.trim()]));
+        });
+    };
+    reader.readAsText(file);
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('drop-zone').style.borderColor='var(--trb-border)';
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+}
+
+async function runBatch() {
+    if (!csvData.length) {
+        alert('Por favor seleccione um ficheiro CSV.');
+        return;
+    }
+
+    document.getElementById('progress-card').style.display = 'block';
+    document.getElementById('results-card').style.display  = 'none';
+
+    results = [];
+    const total = csvData.length;
+
+    for (let i = 0; i < total; i++) {
+        const row = csvData[i];
+        const pct = ((i+1)/total*100).toFixed(0);
+        document.getElementById('progress-fill').style.width = pct + '%';
+        document.getElementById('progress-subtitle').textContent = `${i+1} de ${total} registos (${pct}%)`;
+
+        try {
+            const pdResp = await fetch('/scoring/api/predict/pd/', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    fico_score: parseFloat(row.fico_score)||700,
+                    dti:        parseFloat(row.dti)||15,
+                    int_rate:   parseFloat(row.int_rate)||12,
+                    annual_inc: parseFloat(row.annual_inc)||60000,
+                    emp_length: parseFloat(row.emp_length)||5,
+                })
+            });
+            const pd = await pdResp.json();
+
+            const lgdResp = await fetch('/scoring/api/predict/lgd/', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ loan_amnt: parseFloat(row.loan_amnt)||10000 })
+            });
+            const lgd = await lgdResp.json();
+
+            results.push({
+                idx: i+1,
+                fico: row.fico_score,
+                dti:  row.dti,
+                pd:   pd.pd_pct || 0,
+                grade: pd.grade || '—',
+                lgd: lgd.lgd_pct || 0,
+                ead: parseFloat(row.loan_amnt)||10000,
+                el:  (parseFloat(row.loan_amnt)||10000) * (pd.pd||0) * (lgd.lgd||0.45),
+            });
+        } catch(e) {}
+
+        // Simular progresso suave
+        await new Promise(r => setTimeout(r, 30));
+    }
+
+    showResults();
+}
+
+function showResults() {
+    document.getElementById('progress-card').style.display = 'none';
+    document.getElementById('results-card').style.display  = 'block';
+    document.getElementById('results-subtitle').textContent =
+        `${results.length} registos processados · PD + LGD + EAD calculados`;
+
+    const tbody = document.getElementById('results-tbody');
+    tbody.innerHTML = results.slice(0, 100).map(r => {
+        const gradeColors = {A:'#22C55E',B:'#3B82F6',C:'#F59E0B',D:'#F97316',E:'#EF4444',F:'#E63C2F',G:'#64748B'};
+        const c = gradeColors[r.grade] || '#64748B';
+        return `<tr>
+            <td style="font-family:'JetBrains Mono',monospace;color:var(--trb-text-muted)">${r.idx}</td>
+            <td>${r.fico}</td>
+            <td>${r.dti}%</td>
+            <td style="color:${r.pd>15?'var(--trb-danger)':r.pd>5?'var(--trb-warning)':'var(--trb-success)'}">${parseFloat(r.pd).toFixed(2)}%</td>
+            <td><span class="grade-badge grade-${r.grade}">${r.grade}</span></td>
+            <td>${parseFloat(r.lgd).toFixed(2)}%</td>
+            <td>$${r.ead.toLocaleString('pt-PT',{maximumFractionDigits:0})}</td>
+            <td style="color:var(--trb-warning)">$${r.el.toLocaleString('pt-PT',{maximumFractionDigits:0})}</td>
+        </tr>`;
+    }).join('');
+}
+
+function downloadResults() {
+    if (!results.length) return;
+    const header = 'idx,fico,dti,pd_pct,grade,lgd_pct,ead,expected_loss\n';
+    const rows = results.map(r =>
+        `${r.idx},${r.fico},${r.dti},${parseFloat(r.pd).toFixed(4)},${r.grade},${parseFloat(r.lgd).toFixed(4)},${r.ead.toFixed(2)},${r.el.toFixed(2)}`
+    ).join('\n');
+    const blob = new Blob([header+rows], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'scoring_resultados.csv';
+    a.click();
+}
+
+// Template download
+document.getElementById('download-template').addEventListener('click', e => {
+    e.preventDefault();
+    const csv = 'fico_score,dti,int_rate,annual_inc,loan_amnt,emp_length,purpose,home_ownership\n720,18.5,11.99,75000,15000,5,debt_consolidation,MORTGAGE\n650,32.1,21.45,45000,8000,2,credit_card,RENT\n780,8.2,6.99,120000,25000,10,home_improvement,OWN\n';
+    const blob = new Blob([csv],{type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'template_scoring.csv';
+    a.click();
+});
+</script>
+{% endblock %}

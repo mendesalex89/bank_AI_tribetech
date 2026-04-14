@@ -1,0 +1,637 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard de Análise{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+.chart-wrapper {
+    background: var(--trb-dark-2);
+    border: 1px solid var(--trb-border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    height: 100%;
+}
+.chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+.chart-title   { font-size: 0.875rem; font-weight: 700; color: var(--trb-text); }
+.chart-subtitle{ font-size: 0.72rem;  color: var(--trb-text-muted); margin-top: 2px; }
+
+/* Extra KPI cards */
+.kpi-card-lg {
+    background: var(--trb-dark-2);
+    border: 1px solid var(--trb-border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.kpi-card-lg .kpi-icon {
+    width: 46px; height: 46px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; flex-shrink: 0;
+}
+.kpi-card-lg .kpi-val {
+    font-size: 1.5rem; font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--trb-text); line-height: 1;
+}
+.kpi-card-lg .kpi-lbl {
+    font-size: 0.68rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--trb-text-muted); margin-bottom: 2px;
+}
+.kpi-card-lg .kpi-sub {
+    font-size: 0.7rem; color: var(--trb-text-muted); margin-top: 2px;
+}
+
+/* Metric pill */
+.metric-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.35rem 0.8rem; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+}
+.metric-pill.ok    { background: rgba(34,197,94,0.12); color: #22C55E; border: 1px solid rgba(34,197,94,0.3); }
+.metric-pill.warn  { background: rgba(245,158,11,0.12); color: #F59E0B; border: 1px solid rgba(245,158,11,0.3); }
+.metric-pill.bad   { background: rgba(230,60,47,0.12);  color: var(--trb-red); border: 1px solid rgba(230,60,47,0.3); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex align-items-center justify-content-between">
+    <div>
+        <h1 class="page-title">Dashboard de <span>Análise</span></h1>
+        <p class="page-subtitle">Portfólio real · Lending Club 2007–2018 · <span id="kpi-total-inline">—</span> empréstimos · <span id="kpi-exposure-inline">—</span> de exposição</p>
+    </div>
+    <button class="btn-trb" onclick="loadDashboard()" style="display:inline-flex;align-items:center;gap:0.5rem">
+        <i class="bi bi-arrow-clockwise"></i> Actualizar
+    </button>
+</div>
+
+<!-- ===== FILA 1: KPIs Principais ===== -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card-lg">
+            <div class="kpi-icon" style="background:rgba(230,60,47,0.15);color:var(--trb-red)"><i class="bi bi-bank"></i></div>
+            <div>
+                <div class="kpi-lbl">Empréstimos</div>
+                <div class="kpi-val" id="kpi-total">—</div>
+                <div class="kpi-sub">registos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card-lg">
+            <div class="kpi-icon" style="background:rgba(249,115,22,0.15);color:var(--trb-orange)"><i class="bi bi-currency-dollar"></i></div>
+            <div>
+                <div class="kpi-lbl">Exposição</div>
+                <div class="kpi-val" id="kpi-exposure">—</div>
+                <div class="kpi-sub">milhões USD</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card-lg">
+            <div class="kpi-icon" style="background:rgba(239,68,68,0.15);color:#EF4444"><i class="bi bi-exclamation-triangle-fill"></i></div>
+            <div>
+                <div class="kpi-lbl">Taxa Default</div>
+                <div class="kpi-val" id="kpi-dr">—</div>
+                <div class="kpi-sub">histórica</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card-lg">
+            <div class="kpi-icon" style="background:rgba(59,130,246,0.15);color:#3B82F6"><i class="bi bi-speedometer2"></i></div>
+            <div>
+                <div class="kpi-lbl">FICO Médio</div>
+                <div class="kpi-val" id="kpi-fico">—</div>
+                <div class="kpi-sub">score médio</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card-lg">
+            <div class="kpi-icon" style="background:rgba(34,197,94,0.15);color:#22C55E"><i class="bi bi-graph-down-arrow"></i></div>
+            <div>
+                <div class="kpi-lbl">Perda Realiz.</div>
+                <div class="kpi-val" id="kpi-rl">—</div>
+                <div class="kpi-sub">milhões USD</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card-lg">
+            <div class="kpi-icon" style="background:rgba(139,92,246,0.15);color:#8B5CF6"><i class="bi bi-shield-lock-fill"></i></div>
+            <div>
+                <div class="kpi-lbl">Capital Mín.</div>
+                <div class="kpi-val" id="kpi-cap">—</div>
+                <div class="kpi-sub">8% RWA (Basel)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== FILA 2: DR por Grade + Distribuição Doughnut ===== -->
+<div class="row g-3 mb-3">
+    <div class="col-lg-7">
+        <div class="chart-wrapper">
+            <div class="chart-header">
+                <div>
+                    <div class="chart-title">Taxa de Default por Grade — Expected vs Realised Loss</div>
+                    <div class="chart-subtitle">Incumprimento histórico e perda realizada por categoria IRB</div>
+                </div>
+                <div class="card-icon orange"><i class="bi bi-bar-chart-fill"></i></div>
+            </div>
+            <canvas id="chartELGrade" height="200"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="chart-wrapper">
+            <div class="chart-header">
+                <div>
+                    <div class="chart-title">Distribuição por Grade</div>
+                    <div class="chart-subtitle">Volume de empréstimos por categoria de risco</div>
+                </div>
+                <div class="card-icon blue"><i class="bi bi-pie-chart-fill"></i></div>
+            </div>
+            <canvas id="chartGradeDist" height="220"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ===== FILA 3: Vintage + FICO Distribution ===== -->
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="chart-wrapper">
+            <div class="chart-header">
+                <div>
+                    <div class="chart-title">Análise de Vintage — Taxa de Default por Ano de Emissão</div>
+                    <div class="chart-subtitle">Evolução histórica do incumprimento e volume de origination 2007–2018</div>
+                </div>
+                <div class="card-icon red"><i class="bi bi-graph-up-arrow"></i></div>
+            </div>
+            <canvas id="chartVintage" height="170"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-wrapper">
+            <div class="chart-header">
+                <div>
+                    <div class="chart-title">Finalidade do Empréstimo</div>
+                    <div class="chart-subtitle">Top 8 categorias por volume</div>
+                </div>
+                <div class="card-icon green"><i class="bi bi-list-ul"></i></div>
+            </div>
+            <canvas id="chartPurpose" height="220"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ===== FILA 4: FICO Distribution + Exposição por Grade ===== -->
+<div class="row g-3 mb-3">
+    <div class="col-lg-6">
+        <div class="chart-wrapper">
+            <div class="chart-header">
+                <div>
+                    <div class="chart-title">Distribuição FICO Score</div>
+                    <div class="chart-subtitle">Volume e taxa de default por bucket FICO (buckets de 20 pts)</div>
+                </div>
+                <div class="card-icon yellow"><i class="bi bi-speedometer2"></i></div>
+            </div>
+            <canvas id="chartFicoDist" height="200"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="chart-wrapper">
+            <div class="chart-header">
+                <div>
+                    <div class="chart-title">FICO Médio vs Taxa de Default por Grade</div>
+                    <div class="chart-subtitle">Relação qualidade creditícia–incumprimento</div>
+                </div>
+                <div class="card-icon red"><i class="bi bi-bar-chart-steps"></i></div>
+            </div>
+            <canvas id="chartFicoGrade" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ===== FILA 5: Métricas dos Modelos IRB ===== -->
+<div class="card-irb mb-4">
+    <div class="card-irb-header">
+        <div class="card-icon red"><i class="bi bi-robot"></i></div>
+        <div>
+            <div class="card-title">Métricas dos Modelos IRB — Validação EBA/GL/2017/06</div>
+            <div class="card-subtitle">Resultados do treino com 500.000 observações (Lending Club 2007–2018) · GPU RTX 5060</div>
+        </div>
+        <a href="{% url 'reports_eba' %}" class="btn-trb ms-auto" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.4rem;font-size:0.8rem">
+            <i class="bi bi-file-earmark-text"></i> Relatório EBA
+        </a>
+    </div>
+    <div class="row g-3" id="model-metrics-row">
+        <div class="col-12" style="text-align:center;padding:1.5rem;color:var(--trb-text-muted)">
+            <div class="spinner-trb mx-auto mb-2"></div>A carregar métricas...
+        </div>
+    </div>
+</div>
+
+<!-- ===== FILA 6: Tabela Portfólio ===== -->
+<div class="card-irb mb-4">
+    <div class="card-irb-header">
+        <div class="card-icon orange"><i class="bi bi-table"></i></div>
+        <div>
+            <div class="card-title">Resumo do Portfólio por Grade</div>
+            <div class="card-subtitle">Análise detalhada — dados reais PostgreSQL · <span id="db-record-count">—</span> registos</div>
+        </div>
+    </div>
+    <div style="overflow-x:auto">
+        <table class="table-irb" id="grade-table">
+            <thead>
+                <tr>
+                    <th>Grade</th>
+                    <th>Empréstimos</th>
+                    <th>Exposição (M)</th>
+                    <th>Taxa Default</th>
+                    <th>FICO Médio</th>
+                    <th>EL Prevista (M)</th>
+                    <th>Nível de Risco</th>
+                </tr>
+            </thead>
+            <tbody id="grade-tbody">
+                <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--trb-text-muted)">
+                    <div class="spinner-trb mx-auto mb-2"></div>A carregar dados do PostgreSQL...
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================================
+// Tema TribeTech
+// ============================================================
+Chart.defaults.color         = '#8B93A8';
+Chart.defaults.borderColor   = '#2E3448';
+Chart.defaults.font.family   = "'Inter', sans-serif";
+Chart.defaults.font.size     = 12;
+
+const TRB = {
+    red:    '#E63C2F',
+    orange: '#F97316',
+    blue:   '#3B82F6',
+    green:  '#22C55E',
+    yellow: '#F59E0B',
+    purple: '#8B5CF6',
+    grid:   '#2E3448',
+    gradeColors: {
+        A: '#22C55E', B: '#3B82F6', C: '#F59E0B',
+        D: '#F97316', E: '#EF4444', F: '#E63C2F', G: '#64748B'
+    },
+    gc: (grades) => grades.map(g => TRB.gradeColors[g] || '#64748B'),
+};
+
+// ============================================================
+// Formatters
+// ============================================================
+const fmt = {
+    num:   n => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(0)+'K' : n?.toLocaleString('pt-PT'),
+    money: n => n >= 1e9 ? '$'+(n/1e9).toFixed(1)+'B' : n >= 1e6 ? '$'+(n/1e6).toFixed(0)+'M' : '$'+n?.toLocaleString('pt-PT'),
+    moneyM: n => n != null ? '$'+(+n).toFixed(1)+'M' : '—',
+    pct:   n => (+n).toFixed(1)+'%',
+    dec:   (n,d=4) => (+n).toFixed(d),
+};
+
+// ============================================================
+// Renderizar Métricas dos Modelos
+// ============================================================
+function renderModelMetrics(data) {
+    const container = document.getElementById('model-metrics-row');
+    const models = [
+        { key: 'PD',  label: 'Modelo PD',  sub: 'XGBoost + Platt Scaling', icon: 'activity',       color: 'red',
+          metrics: [
+            { k:'gini',        l:'Gini',        fmt: v => (v*100).toFixed(1)+'%', ok: v => v>=0.20, warn: v => v>=0.15 },
+            { k:'ks',          l:'KS',          fmt: v => (v*100).toFixed(1)+'%', ok: v => v>=0.20, warn: v => v>=0.15 },
+            { k:'auc_roc',     l:'AUC-ROC',     fmt: v => (+v).toFixed(3),        ok: v => v>=0.65, warn: v => v>=0.60 },
+            { k:'brier_score', l:'Brier Score', fmt: v => (+v).toFixed(4),        ok: v => v<=0.25, warn: v => v<=0.30, low_better: true },
+          ]
+        },
+        { key: 'LGD', label: 'Modelo LGD', sub: 'GBM Regressor', icon: 'graph-down-arrow', color: 'orange',
+          metrics: [
+            { k:'r2',   l:'R²',   fmt: v => (+v).toFixed(4), ok: v => v>=0.01, warn: v => v>=0 },
+            { k:'rmse', l:'RMSE', fmt: v => (+v).toFixed(4), ok: v => v<=0.15, warn: v => v<=0.20, low_better: true },
+            { k:'mae',  l:'MAE',  fmt: v => (+v).toFixed(4), ok: v => v<=0.10, warn: v => v<=0.15, low_better: true },
+          ]
+        },
+        { key: 'EAD', label: 'Modelo EAD', sub: 'GBM Regressor', icon: 'currency-exchange', color: 'blue',
+          metrics: [
+            { k:'r2',   l:'R²',   fmt: v => (+v).toFixed(4), ok: v => v>=0.80, warn: v => v>=0.50 },
+            { k:'rmse', l:'RMSE (USD)', fmt: v => (+v).toFixed(1), ok: v => v<=1000, warn: v => v<=5000, low_better: true },
+          ]
+        },
+    ];
+
+    container.innerHTML = models.map(m => {
+        const md = data[m.key] || {};
+        const metrics = md.metrics || {};
+        const pills = m.metrics.map(def => {
+            const val = metrics[def.k];
+            if (val == null) return '';
+            const isOk   = def.low_better ? def.ok(val)   : def.ok(val);
+            const isWarn = def.low_better ? def.warn(val)  : def.warn(val);
+            const cls    = isOk ? 'ok' : (isWarn ? 'warn' : 'bad');
+            const icon   = isOk ? 'check-circle-fill' : (isWarn ? 'exclamation-circle-fill' : 'x-circle-fill');
+            return `<span class="metric-pill ${cls}" title="${def.l}">
+                <i class="bi bi-${icon}"></i> ${def.l}: ${def.fmt(val)}
+            </span>`;
+        }).join('&nbsp;');
+
+        return `<div class="col-lg-4">
+            <div style="background:var(--trb-dark-3);border:1px solid var(--trb-border);border-radius:12px;padding:1.25rem">
+                <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem">
+                    <div class="card-icon ${m.color}"><i class="bi bi-${m.icon}"></i></div>
+                    <div>
+                        <div style="font-weight:700;color:var(--trb-text)">${m.label}</div>
+                        <div style="font-size:0.72rem;color:var(--trb-text-muted)">${md.version||m.sub} · ${md.dataset||''}</div>
+                    </div>
+                    <span class="badge-regulatory ms-auto" style="font-size:0.65rem">
+                        <i class="bi bi-shield-fill-check"></i> EBA
+                    </span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:0.4rem">${pills}</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ============================================================
+// Carregar todos os dados
+// ============================================================
+async function loadDashboard() {
+    try {
+        const [kpiRes, portRes, vintageRes, purposeRes, elRes, ficoRes, metricsRes] = await Promise.all([
+            fetch('/dashboard/api/kpis/').then(r => r.json()),
+            fetch('/dashboard/api/portfolio/').then(r => r.json()),
+            fetch('/dashboard/api/vintage/').then(r => r.json()),
+            fetch('/dashboard/api/grade-dist/').then(r => r.json()),
+            fetch('/dashboard/api/el-grade/').then(r => r.json()),
+            fetch('/dashboard/api/fico/').then(r => r.json()),
+            fetch('/dashboard/api/model-metrics/').then(r => r.json()),
+        ]);
+
+        const kpi      = kpiRes.data || {};
+        const portData = portRes.data || [];
+        const vintage  = vintageRes.data || [];
+        const purpose  = purposeRes.data || [];
+        const elData   = elRes.data || [];
+        const ficoData = ficoRes.data || [];
+        const metrics  = metricsRes.data || {};
+
+        // ---- KPIs ----
+        document.getElementById('kpi-total').textContent     = fmt.num(kpi.total_loans);
+        document.getElementById('kpi-total-inline').textContent = fmt.num(kpi.total_loans);
+        document.getElementById('kpi-exposure').textContent  = fmt.moneyM(kpi.total_exposure_m);
+        document.getElementById('kpi-exposure-inline').textContent = '$' + kpi.total_exposure_m + 'M';
+        document.getElementById('kpi-dr').textContent        = kpi.default_rate_pct + '%';
+        document.getElementById('kpi-fico').textContent      = kpi.avg_fico;
+        document.getElementById('kpi-rl').textContent        = fmt.moneyM(kpi.realised_loss_m);
+        document.getElementById('kpi-cap').textContent       = fmt.moneyM(kpi.min_capital_m);
+        document.getElementById('db-record-count').textContent = fmt.num(kpi.total_loans);
+
+        const grades = portData.map(r => r.grade);
+        const gColors = TRB.gc(grades);
+
+        // ---- 1. EL vs RL por Grade ----
+        destroyChart('chartELGrade');
+        new Chart('chartELGrade', {
+            type: 'bar',
+            data: {
+                labels: elData.map(r => r.grade),
+                datasets: [
+                    {
+                        label: 'Taxa de Default (%)',
+                        data: elData.map(r => +r.dr_pct),
+                        backgroundColor: TRB.gc(elData.map(r => r.grade)).map(c => c+'BB'),
+                        borderColor: TRB.gc(elData.map(r => r.grade)),
+                        borderWidth: 2, borderRadius: 5, yAxisID: 'y',
+                    },
+                    {
+                        label: 'Perda Realizada (M USD)',
+                        data: elData.map(r => +r.realised_loss_m),
+                        backgroundColor: TRB.red+'33',
+                        borderColor: TRB.red,
+                        borderWidth: 2, borderRadius: 5, yAxisID: 'y2',
+                        type: 'bar',
+                    },
+                    {
+                        label: 'Expected Loss (M USD)',
+                        data: elData.map(r => +r.expected_loss_m),
+                        borderColor: TRB.orange,
+                        backgroundColor: 'transparent',
+                        borderWidth: 2, borderDash: [5,3],
+                        type: 'line', yAxisID: 'y2', tension: 0.3,
+                        pointRadius: 5, pointBackgroundColor: TRB.orange,
+                    },
+                ]
+            },
+            options: {
+                plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12 } } },
+                scales: {
+                    y:  { position: 'left',  grid: { color: TRB.grid }, ticks: { callback: v => v+'%' } },
+                    y2: { position: 'right', grid: { display: false }, ticks: { callback: v => '$'+v+'M' } },
+                    x:  { grid: { display: false } },
+                }
+            }
+        });
+
+        // ---- 2. Doughnut Grade ----
+        destroyChart('chartGradeDist');
+        new Chart('chartGradeDist', {
+            type: 'doughnut',
+            data: {
+                labels: grades,
+                datasets: [{ data: portData.map(r => r.total),
+                             backgroundColor: gColors.map(c=>c+'BB'),
+                             borderColor: gColors, borderWidth: 2 }]
+            },
+            options: {
+                cutout: '62%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font:{size:11} } },
+                    tooltip: {
+                        callbacks: { label: ctx => ` ${ctx.label}: ${fmt.num(ctx.parsed)} empréstimos` }
+                    }
+                }
+            }
+        });
+
+        // ---- 3. Vintage (linha + barras) ----
+        destroyChart('chartVintage');
+        new Chart('chartVintage', {
+            type: 'bar',
+            data: {
+                labels: vintage.map(r => r.year),
+                datasets: [
+                    {
+                        label: 'Volume (empréstimos)',
+                        data: vintage.map(r => r.total_loans),
+                        backgroundColor: TRB.blue+'55',
+                        borderColor: TRB.blue, borderWidth: 1,
+                        borderRadius: 4, yAxisID: 'y2',
+                    },
+                    {
+                        label: 'Taxa de Default (%)',
+                        data: vintage.map(r => +r.dr_pct),
+                        borderColor: TRB.red, backgroundColor: TRB.red+'15',
+                        borderWidth: 2.5, fill: true, tension: 0.4,
+                        type: 'line', yAxisID: 'y',
+                        pointRadius: 4, pointBackgroundColor: TRB.red,
+                        pointHoverRadius: 7,
+                    },
+                ]
+            },
+            options: {
+                plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12 } } },
+                scales: {
+                    y:  { position: 'left',  grid: { color: TRB.grid },   ticks: { callback: v => v+'%' } },
+                    y2: { position: 'right', grid: { display: false }, ticks: { callback: v => fmt.num(v) } },
+                    x:  { grid: { display: false } }
+                }
+            }
+        });
+
+        // ---- 4. Finalidade (horizontal bar) ----
+        destroyChart('chartPurpose');
+        const topPurpose = purpose.slice(0, 8);
+        new Chart('chartPurpose', {
+            type: 'bar',
+            data: {
+                labels: topPurpose.map(r => r.purpose.replace(/_/g, ' ')),
+                datasets: [{
+                    data: topPurpose.map(r => r.total),
+                    backgroundColor: TRB.orange+'77',
+                    borderColor: TRB.orange, borderWidth: 1, borderRadius: 4,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: TRB.grid }, ticks: { callback: v => fmt.num(v) } },
+                    y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                }
+            }
+        });
+
+        // ---- 5. FICO Distribution ----
+        destroyChart('chartFicoDist');
+        new Chart('chartFicoDist', {
+            type: 'bar',
+            data: {
+                labels: ficoData.map(r => r.fico_bucket + '+'),
+                datasets: [
+                    {
+                        label: 'Volume',
+                        data: ficoData.map(r => r.total),
+                        backgroundColor: TRB.blue+'66',
+                        borderColor: TRB.blue, borderWidth: 1, borderRadius: 3,
+                        yAxisID: 'y2',
+                    },
+                    {
+                        label: 'Taxa Default (%)',
+                        data: ficoData.map(r => +r.dr_pct),
+                        borderColor: TRB.red, backgroundColor: 'transparent',
+                        borderWidth: 2, type: 'line', yAxisID: 'y',
+                        tension: 0.4, pointRadius: 3, pointBackgroundColor: TRB.red,
+                    }
+                ]
+            },
+            options: {
+                plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 10 } } },
+                scales: {
+                    y:  { position: 'left',  grid: { color: TRB.grid }, ticks: { callback: v => v+'%' } },
+                    y2: { position: 'right', grid: { display: false }, ticks: { callback: v => fmt.num(v) } },
+                    x:  { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } }
+                }
+            }
+        });
+
+        // ---- 6. FICO Médio vs DR por Grade ----
+        destroyChart('chartFicoGrade');
+        new Chart('chartFicoGrade', {
+            type: 'bar',
+            data: {
+                labels: portData.map(r => r.grade),
+                datasets: [
+                    {
+                        label: 'FICO Score Médio',
+                        data: portData.map(r => Math.round(r.avg_fico)),
+                        backgroundColor: gColors.map(c => c+'66'),
+                        borderColor: gColors, borderWidth: 2, borderRadius: 5,
+                        yAxisID: 'y',
+                    },
+                    {
+                        label: 'Taxa Default (%)',
+                        data: portData.map(r => (+r.dr * 100).toFixed(1)),
+                        borderColor: TRB.red, backgroundColor: 'transparent',
+                        borderWidth: 2.5, type: 'line', yAxisID: 'y2',
+                        tension: 0.3, pointRadius: 5, pointBackgroundColor: TRB.red,
+                    }
+                ]
+            },
+            options: {
+                plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12 } } },
+                scales: {
+                    y:  { position: 'left',  min: 550, grid: { color: TRB.grid }, title: { display: true, text: 'FICO Score' } },
+                    y2: { position: 'right', min: 0,   grid: { display: false }, ticks: { callback: v => v+'%' } },
+                    x:  { grid: { display: false } }
+                }
+            }
+        });
+
+        // ---- 7. Métricas dos Modelos ----
+        renderModelMetrics(metrics);
+
+        // ---- 8. Tabela ----
+        const tbody = document.getElementById('grade-tbody');
+        tbody.innerHTML = portData.map(r => {
+            const dr    = +r.dr;
+            const risk  = dr < 0.05 ? 'Baixo' : dr < 0.15 ? 'Médio' : dr < 0.25 ? 'Alto' : 'Muito Alto';
+            const rCls  = dr < 0.05 ? 'success' : dr < 0.15 ? 'warning' : 'danger';
+            const elRow = elData.find(e => e.grade === r.grade) || {};
+            return `<tr>
+                <td><span class="grade-badge grade-${r.grade}">${r.grade}</span></td>
+                <td style="font-family:'JetBrains Mono',monospace">${fmt.num(r.total)}</td>
+                <td style="font-family:'JetBrains Mono',monospace">${fmt.moneyM(r.exposure ? r.exposure/1e6 : null)}</td>
+                <td style="font-family:'JetBrains Mono',monospace;color:var(--trb-${rCls==='success'?'success':rCls==='warning'?'warning':'danger'})">${fmt.pct(dr*100)}</td>
+                <td>${Math.round(r.avg_fico)}</td>
+                <td style="font-family:'JetBrains Mono',monospace;color:var(--trb-orange)">${elRow.expected_loss_m ? '$'+elRow.expected_loss_m+'M' : '—'}</td>
+                <td><span class="alert-irb alert-irb-${rCls}" style="padding:0.2rem 0.6rem;border-radius:20px;font-size:0.7rem;display:inline-block">${risk}</span></td>
+            </tr>`;
+        }).join('');
+
+    } catch(err) {
+        console.error('Erro ao carregar dashboard:', err);
+    }
+}
+
+// Destruir chart existente para evitar duplicados
+const _charts = {};
+function destroyChart(id) {
+    const existing = Chart.getChart(id);
+    if (existing) existing.destroy();
+}
+
+loadDashboard();
+</script>
+{% endblock %}

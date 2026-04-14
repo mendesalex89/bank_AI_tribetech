@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Monitorização de Modelos{% endblock %}
+{% block nav_monitoring %}active{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1 class="page-title">Monitorização <span>de Modelos</span></h1>
+    <p class="page-subtitle">PSI · Drift Detection · Performance ao Longo do Tempo</p>
+</div>
+
+<!-- Estado dos modelos -->
+<div class="row g-3 mb-4">
+    {% for model in models_status %}
+    <div class="col-md-4">
+        <div class="card-irb">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="card-icon {{ model.color }}"><i class="bi {{ model.icon }}"></i></div>
+                <div>
+                    <div class="card-title">Modelo {{ model.name }}</div>
+                    <div class="card-subtitle">v{{ model.version }} · {{ model.date }}</div>
+                </div>
+                <span style="margin-left:auto;font-size:0.7rem;font-weight:700;padding:0.25rem 0.75rem;border-radius:20px;background:{{ model.status_bg }};color:{{ model.status_color }}">
+                    <i class="bi bi-circle-fill me-1" style="font-size:0.5rem"></i>{{ model.status_label }}
+                </span>
+            </div>
+            <div class="row g-2 text-center">
+                <div class="col-4">
+                    <div style="font-size:0.65rem;color:var(--trb-text-muted);text-transform:uppercase;letter-spacing:0.05em">Gini</div>
+                    <div style="font-size:1.1rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--trb-success)">{{ model.gini }}</div>
+                </div>
+                <div class="col-4">
+                    <div style="font-size:0.65rem;color:var(--trb-text-muted);text-transform:uppercase;letter-spacing:0.05em">PSI</div>
+                    <div style="font-size:1.1rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:{{ model.psi_color }}">{{ model.psi }}</div>
+                </div>
+                <div class="col-4">
+                    <div style="font-size:0.65rem;color:var(--trb-text-muted);text-transform:uppercase;letter-spacing:0.05em">Drift</div>
+                    <div style="font-size:1.1rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:{{ model.drift_color }}">{{ model.drift }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Gráficos -->
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="card-irb">
+            <div class="card-irb-header">
+                <div class="card-icon orange"><i class="bi bi-graph-up-arrow"></i></div>
+                <div>
+                    <div class="card-title">Evolução do Gini ao Longo do Tempo</div>
+                    <div class="card-subtitle">Monitorização mensal da discriminação dos modelos</div>
+                </div>
+            </div>
+            <canvas id="chartGiniTime" height="220"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-irb">
+            <div class="card-irb-header">
+                <div class="card-icon red"><i class="bi bi-speedometer2"></i></div>
+                <div>
+                    <div class="card-title">PSI por Modelo</div>
+                    <div class="card-subtitle">Population Stability Index</div>
+                </div>
+            </div>
+            <canvas id="chartPSI" height="220"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card-irb">
+            <div class="card-irb-header">
+                <div class="card-icon blue"><i class="bi bi-bar-chart-fill"></i></div>
+                <div>
+                    <div class="card-title">Distribuição de Scores PD</div>
+                    <div class="card-subtitle">Treino vs. Produção — detecção de drift</div>
+                </div>
+            </div>
+            <canvas id="chartDrift" height="220"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card-irb">
+            <div class="card-irb-header">
+                <div class="card-icon green"><i class="bi bi-calendar-check-fill"></i></div>
+                <div>
+                    <div class="card-title">Backtesting — PD Prevista vs. Observada</div>
+                    <div class="card-subtitle">Calibração trimestral por grade</div>
+                </div>
+            </div>
+            <canvas id="chartBacktest" height="220"></canvas>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+Chart.defaults.color = '#8B93A8';
+Chart.defaults.borderColor = '#2E3448';
+
+const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+// Gini ao longo do tempo
+new Chart('chartGiniTime', {
+    type: 'line',
+    data:{
+        labels: months,
+        datasets:[
+            { label:'PD Gini', data:[0.712,0.715,0.710,0.718,0.720,0.714,0.716,0.719,0.712,0.713,0.711,0.715],
+              borderColor:'#E63C2F', backgroundColor:'#E63C2F15', fill:true, tension:0.4, pointRadius:3 },
+            { label:'LGD Gini', data:[0.543,0.548,0.540,0.545,0.552,0.543,0.548,0.544,0.541,0.546,0.543,0.549],
+              borderColor:'#F97316', fill:false, tension:0.4, pointRadius:3 },
+            { label:'EAD Gini', data:[0.481,0.485,0.479,0.483,0.488,0.480,0.485,0.482,0.479,0.484,0.481,0.486],
+              borderColor:'#3B82F6', fill:false, tension:0.4, pointRadius:3 },
+            // Limiar EBA
+            { label:'Limiar EBA (PD)', data:Array(12).fill(0.50),
+              borderColor:'#22C55E', borderDash:[8,4], fill:false, pointRadius:0 },
+        ]
+    },
+    options:{
+        plugins:{ legend:{display:true} },
+        scales:{
+            y:{ grid:{color:'#2E3448'}, min:0.40, max:0.80 },
+            x:{ grid:{display:false} }
+        }
+    }
+});
+
+// PSI
+new Chart('chartPSI', {
+    type:'bar',
+    data:{
+        labels:['PD','LGD','EAD'],
+        datasets:[
+            { label:'PSI Actual', data:[0.042,0.038,0.051],
+              backgroundColor:['#22C55E88','#22C55E88','#F59E0B88'],
+              borderColor:['#22C55E','#22C55E','#F59E0B'],
+              borderWidth:2, borderRadius:8 },
+            { label:'Limiar Alerta (0.10)',
+              data:[0.10,0.10,0.10],
+              type:'line', borderColor:'#EF4444', borderDash:[6,3],
+              fill:false, pointRadius:0 }
+        ]
+    },
+    options:{
+        plugins:{ legend:{display:true} },
+        scales:{
+            y:{ grid:{color:'#2E3448'}, min:0, max:0.15 },
+            x:{ grid:{display:false} }
+        }
+    }
+});
+
+// Distribuição drift
+const bins = ['300-350','350-400','400-450','450-500','500-550','550-600','600-650','650-700','700-750','750-800','800-850'];
+new Chart('chartDrift', {
+    type:'bar',
+    data:{
+        labels:bins,
+        datasets:[
+            { label:'Treino', data:[2,5,12,22,28,24,18,14,10,7,3],
+              backgroundColor:'#3B82F644', borderColor:'#3B82F6', borderWidth:1, borderRadius:2 },
+            { label:'Produção', data:[1,4,11,21,29,25,19,15,11,8,4],
+              backgroundColor:'#F9731644', borderColor:'#F97316', borderWidth:1, borderRadius:2 }
+        ]
+    },
+    options:{
+        plugins:{ legend:{display:true} },
+        scales:{
+            y:{ grid:{color:'#2E3448'}, ticks:{callback:v=>v+'%'} },
+            x:{ grid:{display:false}, ticks:{maxRotation:45} }
+        }
+    }
+});
+
+// Backtesting PD
+const grades = ['A','B','C','D','E','F','G'];
+new Chart('chartBacktest', {
+    type:'bar',
+    data:{
+        labels:grades,
+        datasets:[
+            { label:'PD Prevista (%)', data:[3.1,7.1,11.8,17.1,23.4,28.5,31.9],
+              backgroundColor:'#3B82F644', borderColor:'#3B82F6', borderWidth:2, borderRadius:4 },
+            { label:'PD Observada (%)', data:[3.0,6.9,11.5,17.4,23.1,28.9,32.2],
+              type:'line', borderColor:'#E63C2F', pointBackgroundColor:'#E63C2F',
+              fill:false, tension:0.3, pointRadius:5 }
+        ]
+    },
+    options:{
+        plugins:{ legend:{display:true} },
+        scales:{
+            y:{ grid:{color:'#2E3448'}, ticks:{callback:v=>v+'%'} },
+            x:{ grid:{display:false} }
+        }
+    }
+});
+</script>
+{% endblock %}

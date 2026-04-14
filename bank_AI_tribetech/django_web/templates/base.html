@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Credit Risk IRB Platform{% endblock %} | TribeTech</title>
+    {% load static %}
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+    <style>
+        /* =====================================================================
+           TribeTech IRB Platform — Design System
+           Cores: Vermelho #E63C2F → Laranja #F97316 (branding TribeTech)
+           ===================================================================== */
+        :root {
+            --trb-red:        #E63C2F;
+            --trb-orange:     #F97316;
+            --trb-gradient:   linear-gradient(135deg, #E63C2F 0%, #F97316 100%);
+            --trb-dark:       #0D0F14;
+            --trb-dark-2:     #141720;
+            --trb-dark-3:     #1C2030;
+            --trb-dark-4:     #252A3A;
+            --trb-border:     #2E3448;
+            --trb-text:       #E8EAF0;
+            --trb-text-muted: #8B93A8;
+            --trb-success:    #22C55E;
+            --trb-warning:    #F59E0B;
+            --trb-danger:     #EF4444;
+            --trb-info:       #3B82F6;
+            --sidebar-width:  260px;
+            --topbar-height:  60px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--trb-dark);
+            color: var(--trb-text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--trb-dark-2); }
+        ::-webkit-scrollbar-thumb { background: var(--trb-border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--trb-red); }
+
+        /* ── Topbar ── */
+        .topbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: var(--topbar-height);
+            background: var(--trb-dark-2);
+            border-bottom: 1px solid var(--trb-border);
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            z-index: 1000;
+            gap: 1rem;
+        }
+
+        .topbar .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .topbar .brand img {
+            height: 28px;
+            filter: brightness(0) invert(1);
+        }
+
+        .topbar .brand-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--trb-border);
+        }
+
+        .topbar .brand-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--trb-text);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .topbar .brand-subtitle {
+            font-size: 0.7rem;
+            color: var(--trb-text-muted);
+            display: block;
+            line-height: 1;
+        }
+
+        .topbar-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .badge-regulatory {
+            background: var(--trb-gradient);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.25rem 0.6rem;
+            border-radius: 20px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .topbar-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--trb-text-muted);
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            position: fixed;
+            top: var(--topbar-height);
+            left: 0;
+            width: var(--sidebar-width);
+            height: calc(100vh - var(--topbar-height));
+            background: var(--trb-dark-2);
+            border-right: 1px solid var(--trb-border);
+            overflow-y: auto;
+            z-index: 900;
+            padding: 1rem 0;
+        }
+
+        .sidebar-section {
+            padding: 0.5rem 1rem 0.25rem;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--trb-text-muted);
+            margin-top: 0.75rem;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 1.25rem;
+            color: var(--trb-text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+            margin: 1px 0;
+        }
+
+        .sidebar-item:hover {
+            color: var(--trb-text);
+            background: var(--trb-dark-3);
+            border-left-color: var(--trb-orange);
+        }
+
+        .sidebar-item.active {
+            color: white;
+            background: var(--trb-dark-3);
+            border-left-color: var(--trb-red);
+        }
+
+        .sidebar-item.active .sidebar-icon {
+            background: var(--trb-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sidebar-item i { font-size: 1rem; min-width: 20px; }
+
+        .sidebar-badge {
+            margin-left: auto;
+            font-size: 0.65rem;
+            background: var(--trb-dark-4);
+            color: var(--trb-text-muted);
+            padding: 0.15rem 0.45rem;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .sidebar-badge.new {
+            background: var(--trb-gradient);
+            color: white;
+        }
+
+        /* ── Main Content ── */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            margin-top: var(--topbar-height);
+            padding: 1.5rem;
+            min-height: calc(100vh - var(--topbar-height));
+        }
+
+        /* ── Cards ── */
+        .card-irb {
+            background: var(--trb-dark-2);
+            border: 1px solid var(--trb-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .card-irb:hover {
+            border-color: rgba(230, 60, 47, 0.4);
+            box-shadow: 0 4px 20px rgba(230, 60, 47, 0.08);
+        }
+
+        .card-irb-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .card-icon.red    { background: rgba(230, 60, 47, 0.15); color: var(--trb-red); }
+        .card-icon.orange { background: rgba(249, 115, 22, 0.15); color: var(--trb-orange); }
+        .card-icon.green  { background: rgba(34, 197, 94, 0.15); color: var(--trb-success); }
+        .card-icon.blue   { background: rgba(59, 130, 246, 0.15); color: var(--trb-info); }
+        .card-icon.yellow { background: rgba(245, 158, 11, 0.15); color: var(--trb-warning); }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--trb-text);
+        }
+
+        .card-subtitle {
+            font-size: 0.75rem;
+            color: var(--trb-text-muted);
+        }
+
+        /* ── KPI Cards ── */
+        .kpi-card {
+            background: var(--trb-dark-2);
+            border: 1px solid var(--trb-border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--trb-gradient);
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--trb-text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .kpi-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--trb-text);
+            line-height: 1;
+        }
+
+        .kpi-delta {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.35rem;
+        }
+
+        .kpi-delta.up   { color: var(--trb-success); }
+        .kpi-delta.down { color: var(--trb-danger); }
+
+        /* ── Page Header ── */
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--trb-text);
+        }
+
+        .page-title span {
+            background: var(--trb-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-subtitle {
+            font-size: 0.875rem;
+            color: var(--trb-text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* ── Buttons ── */
+        .btn-trb {
+            background: var(--trb-gradient);
+            color: white;
+            border: none;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 0.5rem 1.25rem;
+            font-size: 0.875rem;
+            transition: opacity 0.2s, transform 0.1s;
+            cursor: pointer;
+        }
+
+        .btn-trb:hover { opacity: 0.9; transform: translateY(-1px); color: white; }
+        .btn-trb:active { transform: translateY(0); }
+
+        .btn-trb-outline {
+            background: transparent;
+            color: var(--trb-orange);
+            border: 1px solid var(--trb-orange);
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 0.5rem 1.25rem;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .btn-trb-outline:hover {
+            background: var(--trb-orange);
+            color: white;
+        }
+
+        /* ── Tables ── */
+        .table-irb {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .table-irb th {
+            background: var(--trb-dark-3);
+            color: var(--trb-text-muted);
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--trb-border);
+        }
+
+        .table-irb td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--trb-border);
+            color: var(--trb-text);
+        }
+
+        .table-irb tbody tr:hover { background: var(--trb-dark-3); }
+        .table-irb tbody tr:last-child td { border-bottom: none; }
+
+        /* ── Gauge / Progress ── */
+        .metric-bar {
+            height: 6px;
+            background: var(--trb-dark-4);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .metric-bar-fill {
+            height: 100%;
+            background: var(--trb-gradient);
+            border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+
+        /* ── Formulários ── */
+        .form-irb .form-control,
+        .form-irb .form-select {
+            background: var(--trb-dark-3);
+            border: 1px solid var(--trb-border);
+            color: var(--trb-text);
+            border-radius: 8px;
+            padding: 0.6rem 0.9rem;
+            font-size: 0.875rem;
+        }
+
+        .form-irb .form-control:focus,
+        .form-irb .form-select:focus {
+            background: var(--trb-dark-3);
+            border-color: var(--trb-orange);
+            color: var(--trb-text);
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+        }
+
+        .form-irb label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--trb-text-muted);
+            margin-bottom: 0.35rem;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── Grade Badges ── */
+        .grade-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .grade-A { background: rgba(34, 197, 94, 0.2); color: #22C55E; }
+        .grade-B { background: rgba(59, 130, 246, 0.2); color: #3B82F6; }
+        .grade-C { background: rgba(245, 158, 11, 0.2); color: #F59E0B; }
+        .grade-D { background: rgba(239, 68, 68, 0.2); color: #EF4444; }
+        .grade-E { background: rgba(168, 85, 247, 0.2); color: #A855F7; }
+        .grade-F { background: rgba(230, 60, 47, 0.2); color: #E63C2F; }
+        .grade-G { background: rgba(100, 116, 139, 0.2); color: #64748B; }
+
+        /* ── Result Box ── */
+        .result-box {
+            background: var(--trb-dark-3);
+            border: 1px solid var(--trb-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: none;
+        }
+
+        .result-box.show { display: block; }
+
+        .result-metric {
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .result-metric-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--trb-text-muted);
+            font-weight: 700;
+        }
+
+        .result-metric-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            margin: 0.25rem 0;
+        }
+
+        .result-metric-value.low    { color: var(--trb-success); }
+        .result-metric-value.medium { color: var(--trb-warning); }
+        .result-metric-value.high   { color: var(--trb-danger); }
+
+        /* ── Loading spinner ── */
+        .spinner-trb {
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid var(--trb-border);
+            border-top-color: var(--trb-red);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Alerts ── */
+        .alert-irb {
+            border: none;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 0.875rem 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .alert-irb-success { background: rgba(34, 197, 94, 0.1); color: #22C55E; border-left: 4px solid #22C55E; }
+        .alert-irb-warning { background: rgba(245, 158, 11, 0.1); color: #F59E0B; border-left: 4px solid #F59E0B; }
+        .alert-irb-danger  { background: rgba(239, 68, 68, 0.1);  color: #EF4444; border-left: 4px solid #EF4444; }
+        .alert-irb-info    { background: rgba(59, 130, 246, 0.1); color: #3B82F6; border-left: 4px solid #3B82F6; }
+
+        /* ── Tabs ── */
+        .tabs-irb {
+            display: flex;
+            gap: 0.25rem;
+            background: var(--trb-dark-3);
+            padding: 0.3rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+        }
+
+        .tab-irb {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--trb-text-muted);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+        }
+
+        .tab-irb.active {
+            background: var(--trb-dark-2);
+            color: var(--trb-text);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        }
+
+        /* ── Range slider ── */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--trb-dark-4);
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--trb-gradient);
+            cursor: pointer;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+        }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% load static %}
+
+    <!-- ==================== TOPBAR ==================== -->
+    <header class="topbar">
+        <a href="/" class="brand">
+            <img src="{% static 'img/logo-tribetech.png' %}" alt="TribeTech" onerror="this.style.display='none'">
+            <div class="brand-divider"></div>
+            <div>
+                <span class="brand-title">Credit Risk IRB</span>
+                <span class="brand-subtitle">Plataforma de Risco de Crédito</span>
+            </div>
+        </a>
+
+        <div class="topbar-right">
+            <span class="badge-regulatory">
+                <i class="bi bi-shield-check me-1"></i>EBA Compliant
+            </span>
+            <span class="topbar-time" id="clock">--:--:--</span>
+        </div>
+    </header>
+
+    <!-- ==================== SIDEBAR ==================== -->
+    <nav class="sidebar" id="sidebar">
+
+        <div class="sidebar-section">Plataforma</div>
+        <a href="{% url 'home' %}" class="sidebar-item {% block nav_home %}{% endblock %}">
+            <i class="bi bi-grid-1x2-fill"></i>
+            <span>Início</span>
+        </a>
+        <a href="{% url 'dashboard' %}" class="sidebar-item {% block nav_dashboard %}{% endblock %}">
+            <i class="bi bi-bar-chart-fill"></i>
+            <span>Dashboard de Análise</span>
+        </a>
+
+        <div class="sidebar-section">Modelos IRB</div>
+        <a href="{% url 'scoring_pd' %}" class="sidebar-item {% block nav_pd %}{% endblock %}">
+            <i class="bi bi-activity"></i>
+            <span>Prob. de Incumprimento</span>
+            <span class="sidebar-badge">PD</span>
+        </a>
+        <a href="{% url 'scoring_lgd' %}" class="sidebar-item {% block nav_lgd %}{% endblock %}">
+            <i class="bi bi-graph-down-arrow"></i>
+            <span>Perda Dado Incumprimento</span>
+            <span class="sidebar-badge">LGD</span>
+        </a>
+        <a href="{% url 'scoring_ead' %}" class="sidebar-item {% block nav_ead %}{% endblock %}">
+            <i class="bi bi-currency-exchange"></i>
+            <span>Exposição no Incumprimento</span>
+            <span class="sidebar-badge">EAD</span>
+        </a>
+        <a href="{% url 'scoring_batch' %}" class="sidebar-item {% block nav_batch %}{% endblock %}">
+            <i class="bi bi-upload"></i>
+            <span>Scoring em Lote</span>
+            <span class="sidebar-badge new">CSV</span>
+        </a>
+
+        <div class="sidebar-section">Regulatório</div>
+        <a href="{% url 'reports_eba' %}" class="sidebar-item {% block nav_reports %}{% endblock %}">
+            <i class="bi bi-file-earmark-pdf-fill"></i>
+            <span>Relatório EBA</span>
+        </a>
+        <a href="{% url 'reports_monitoring' %}" class="sidebar-item {% block nav_monitoring %}{% endblock %}">
+            <i class="bi bi-heart-pulse-fill"></i>
+            <span>Monitorização</span>
+        </a>
+
+        <div class="sidebar-section">Sistema</div>
+        <a href="http://localhost:5010" target="_blank" class="sidebar-item">
+            <i class="bi bi-flask-fill"></i>
+            <span>MLflow</span>
+            <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:0.7rem;color:var(--trb-text-muted)"></i>
+        </a>
+        <a href="http://localhost:5055" target="_blank" class="sidebar-item">
+            <i class="bi bi-database-fill"></i>
+            <span>PgAdmin</span>
+            <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:0.7rem;color:var(--trb-text-muted)"></i>
+        </a>
+        <a href="http://localhost:8090/docs" target="_blank" class="sidebar-item">
+            <i class="bi bi-code-slash"></i>
+            <span>API Docs</span>
+            <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:0.7rem;color:var(--trb-text-muted)"></i>
+        </a>
+    </nav>
+
+    <!-- ==================== MAIN ==================== -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Relógio em tempo real
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent =
+                now.toLocaleTimeString('pt-PT', {hour12: false});
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

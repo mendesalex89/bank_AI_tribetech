@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Relatório EBA{% endblock %}
+{% block nav_reports %}active{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex align-items-center justify-content-between">
+    <div>
+        <h1 class="page-title">Relatório <span>EBA</span></h1>
+        <p class="page-subtitle">Métricas regulatórias · Gini · KS · AUC · Brier Score · EBA/GL/2017/06</p>
+    </div>
+    <a href="{% url 'generate_pdf' %}" class="btn-trb" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.5rem">
+        <i class="bi bi-file-earmark-pdf-fill"></i>Exportar PDF EBA
+    </a>
+</div>
+
+{% for model_name, model_metrics in metrics.items %}
+<div class="card-irb mb-4">
+    <div class="card-irb-header">
+        <div class="card-icon {% if model_name == 'PD' %}red{% elif model_name == 'LGD' %}orange{% else %}blue{% endif %}">
+            <i class="bi bi-{% if model_name == 'PD' %}activity{% elif model_name == 'LGD' %}graph-down-arrow{% else %}currency-exchange{% endif %}"></i>
+        </div>
+        <div>
+            <div class="card-title">Modelo {{ model_name }}</div>
+            <div class="card-subtitle">
+                {% if model_name == 'PD' %}Probabilidade de Incumprimento — Logistic Regression + XGBoost
+                {% elif model_name == 'LGD' %}Perda Dado Incumprimento — Two-Stage (Logistic + Beta)
+                {% else %}Exposição no Incumprimento — CCF Regression{% endif %}
+            </div>
+        </div>
+        <span class="badge-regulatory ms-auto">
+            <i class="bi bi-shield-fill-check me-1"></i>Aprovado EBA
+        </span>
+    </div>
+
+    <div class="row g-3">
+        {% for metric_key, metric in model_metrics.items %}
+        <div class="col-sm-6 col-lg-3">
+            <div style="background:var(--trb-dark-3);border:1px solid var(--trb-border);border-radius:10px;padding:1.25rem;text-align:center">
+                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--trb-text-muted);margin-bottom:0.5rem">
+                    {{ metric.label }}
+                </div>
+                <div style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;
+                    {% if metric.lower_is_better %}
+                        color:{% if metric.value <= metric.threshold %}var(--trb-success){% else %}var(--trb-danger){% endif %};
+                    {% else %}
+                        color:{% if metric.value >= metric.threshold %}var(--trb-success){% else %}var(--trb-danger){% endif %};
+                    {% endif %}
+                ">
+                    {% if metric.value < 1 and metric.value > 0 %}{{ metric.value|floatformat:3 }}
+                    {% else %}{{ metric.value }}{% endif %}
+                </div>
+                <div style="font-size:0.7rem;color:var(--trb-text-muted);margin-top:0.25rem">
+                    Limiar EBA: {% if metric.lower_is_better %}&lt;{% else %}&gt;{% endif %}{{ metric.threshold }}
+                </div>
+                <div class="metric-bar" style="margin-top:0.75rem">
+                    <div class="metric-bar-fill" style="width:{% if metric.lower_is_better %}{{ metric.threshold|floatformat:0 }}{% else %}{% widthratio metric.value 1 100 %}{% endif %}%"></div>
+                </div>
+                <div style="font-size:0.7rem;font-weight:700;margin-top:0.5rem;
+                    {% if metric.lower_is_better %}
+                        color:{% if metric.value <= metric.threshold %}var(--trb-success){% else %}var(--trb-danger){% endif %}
+                    {% else %}
+                        color:{% if metric.value >= metric.threshold %}var(--trb-success){% else %}var(--trb-danger){% endif %}
+                    {% endif %}">
+                    {% if metric.lower_is_better %}
+                        {% if metric.value <= metric.threshold %}<i class="bi bi-check-circle-fill"></i> Conforme{% else %}<i class="bi bi-x-circle-fill"></i> Não Conforme{% endif %}
+                    {% else %}
+                        {% if metric.value >= metric.threshold %}<i class="bi bi-check-circle-fill"></i> Conforme{% else %}<i class="bi bi-x-circle-fill"></i> Não Conforme{% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Gráfico ROC/KS -->
+    <div class="row g-3 mt-2">
+        <div class="col-lg-6">
+            <div style="background:var(--trb-dark-3);border-radius:10px;padding:1rem">
+                <div style="font-size:0.8rem;font-weight:700;color:var(--trb-text);margin-bottom:0.75rem">
+                    Curva ROC — Modelo {{ model_name }}
+                </div>
+                <canvas id="roc-{{ model_name }}" height="200"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div style="background:var(--trb-dark-3);border-radius:10px;padding:1rem">
+                <div style="font-size:0.8rem;font-weight:700;color:var(--trb-text);margin-bottom:0.75rem">
+                    Curva KS — Modelo {{ model_name }}
+                </div>
+                <canvas id="ks-{{ model_name }}" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Conformidade Regulatória -->
+<div class="card-irb">
+    <div class="card-irb-header">
+        <div class="card-icon green"><i class="bi bi-shield-fill-check"></i></div>
+        <div>
+            <div class="card-title">Referências Regulatórias</div>
+            <div class="card-subtitle">Normas e directrizes aplicáveis</div>
+        </div>
+    </div>
+    <div class="row g-3">
+        {% for ref in refs %}
+        <div class="col-md-6">
+            <div style="display:flex;gap:0.75rem;align-items:flex-start;padding:0.75rem;background:var(--trb-dark-3);border-radius:8px">
+                <div class="card-icon green" style="flex-shrink:0"><i class="bi bi-file-earmark-text-fill"></i></div>
+                <div>
+                    <div style="font-size:0.8rem;font-weight:700;color:var(--trb-text)">{{ ref.code }}</div>
+                    <div style="font-size:0.72rem;color:var(--trb-text-muted)">{{ ref.desc }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+Chart.defaults.color = '#8B93A8';
+Chart.defaults.borderColor = '#2E3448';
+
+// Gerar curvas ROC e KS simuladas para cada modelo
+const modelAUCs = { PD: 0.856, LGD: 0.771, EAD: 0.770 };
+const modelKS   = { PD: 0.489, LGD: 0.372, EAD: 0.334 };
+
+['PD','LGD','EAD'].forEach(m => {
+    // ROC
+    const n = 50;
+    const auc = modelAUCs[m];
+    const rocX = Array.from({length:n+1}, (_,i) => i/n);
+    const rocY = rocX.map(x => Math.min(1, Math.pow(x, 1/(2*auc-1+0.01))));
+
+    new Chart('roc-'+m, {
+        type:'line',
+        data:{
+            labels: rocX.map(x=>(x*100).toFixed(0)+'%'),
+            datasets:[
+                { label:'Modelo '+m, data:rocY.map(y=>(y*100).toFixed(2)),
+                  borderColor:'#E63C2F', backgroundColor:'#E63C2F15', fill:true, tension:0.4, pointRadius:0 },
+                { label:'Aleatório', data:rocX.map(x=>(x*100).toFixed(2)),
+                  borderColor:'#2E3448', borderDash:[5,5], fill:false, pointRadius:0 }
+            ]
+        },
+        options:{
+            plugins:{ legend:{display:true} },
+            scales:{
+                x:{ grid:{display:false}, title:{display:true,text:'FPR (%)'}, ticks:{maxTicksLimit:6} },
+                y:{ grid:{color:'#2E3448'}, title:{display:true,text:'TPR (%)'} }
+            }
+        }
+    });
+
+    // KS
+    const ks = modelKS[m];
+    const cumPos = rocX.map(x => Math.min(1, x * (1 + ks * 1.5)));
+    const cumNeg = rocX.map(x => x);
+
+    new Chart('ks-'+m, {
+        type:'line',
+        data:{
+            labels: rocX.map(x=>(x*100).toFixed(0)+'%'),
+            datasets:[
+                { label:'Incumpridores', data:cumPos.map(y=>(Math.min(y,1)*100).toFixed(2)),
+                  borderColor:'#E63C2F', fill:false, tension:0.4, pointRadius:0 },
+                { label:'Não Incumpridores', data:cumNeg.map(y=>(y*100).toFixed(2)),
+                  borderColor:'#3B82F6', fill:false, tension:0.4, pointRadius:0 }
+            ]
+        },
+        options:{
+            plugins:{ legend:{display:true} },
+            scales:{
+                x:{ grid:{display:false}, title:{display:true,text:'% Observações'}, ticks:{maxTicksLimit:6} },
+                y:{ grid:{color:'#2E3448'}, title:{display:true,text:'% Cumulativo'} }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

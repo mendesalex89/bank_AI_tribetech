@@ -1,0 +1,162 @@
+version: "3.9"
+
+# =============================================================================
+# Credit Risk IRB Platform — TribeTech
+# Portas utilizadas (validadas para não conflito em WSL2):
+#   Django  → 8080   (8000/8001/8002 já ocupadas)
+#   FastAPI → 8090   (8010 já ocupada)
+#   PostgreSQL → 5450 (5432/5434/5435/5436 já ocupadas)
+#   MLflow  → 5010   (5000 já ocupada)
+#   PgAdmin → 5055
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Base de Dados PostgreSQL
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: irb_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: credit_risk_irb
+      POSTGRES_USER: irb_user
+      POSTGRES_PASSWORD: irb_secure_2026
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5450:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U irb_user -d credit_risk_irb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - irb_network
+
+  # ---------------------------------------------------------------------------
+  # PgAdmin — Interface Web PostgreSQL
+  # ---------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: irb_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: alexmendesarnold89@yahoo.com
+      PGADMIN_DEFAULT_PASSWORD: admin2026
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "5055:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - irb_network
+
+  # ---------------------------------------------------------------------------
+  # FastAPI — ML Service (PD, LGD, EAD)
+  # ---------------------------------------------------------------------------
+  fastapi:
+    build:
+      context: ./fastapi_ml
+      dockerfile: Dockerfile
+    container_name: irb_fastapi
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://irb_user:irb_secure_2026@postgres:5432/credit_risk_irb
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      PYTHONPATH: /app
+    volumes:
+      - ./fastapi_ml:/app
+      - ./data:/app/data
+      - model_artifacts:/app/artifacts
+    ports:
+      - "8090:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - irb_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Django — Dashboard Web
+  # ---------------------------------------------------------------------------
+  django:
+    build:
+      context: ./django_web
+      dockerfile: Dockerfile
+    container_name: irb_django
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://irb_user:irb_secure_2026@postgres:5432/credit_risk_irb
+      FASTAPI_URL: http://fastapi:8000
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      DJANGO_SECRET_KEY: "trb-irb-secret-key-2026-credit-risk-platform"
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0,*.azurewebsites.net"
+      PYTHONPATH: /app
+    volumes:
+      - ./django_web:/app
+      - ./data:/app/data
+      - model_artifacts:/app/artifacts
+      - static_files:/app/staticfiles
+    ports:
+      - "8080:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      fastapi:
+        condition: service_healthy
+    networks:
+      - irb_network
+
+  # ---------------------------------------------------------------------------
+  # MLflow — Experiment Tracking (≈ Databricks)
+  # ---------------------------------------------------------------------------
+  mlflow:
+    image: python:3.12-slim
+    container_name: irb_mlflow
+    restart: unless-stopped
+    command: >
+      bash -c "pip install mlflow psycopg2-binary -q &&
+               mlflow server
+               --backend-store-uri postgresql://irb_user:irb_secure_2026@postgres:5432/credit_risk_irb
+               --default-artifact-root /mlflow/artifacts
+               --host 0.0.0.0
+               --port 5000"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    ports:
+      - "5010:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - irb_network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+  pgadmin_data:
+  model_artifacts:
+  mlflow_artifacts:
+  static_files:
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  irb_network:
+    driver: bridge

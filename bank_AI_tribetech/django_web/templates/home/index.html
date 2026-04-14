@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Início — Arquitectura do Projecto{% endblock %}
+{% block nav_home %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ── Arquitectura Diagram ── */
+    .arch-diagram {
+        position: relative;
+        background: var(--trb-dark-3);
+        border: 1px solid var(--trb-border);
+        border-radius: 16px;
+        padding: 2rem;
+        overflow: hidden;
+    }
+
+    .arch-diagram::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(circle at 20% 50%, rgba(230,60,47,0.05) 0%, transparent 50%),
+            radial-gradient(circle at 80% 50%, rgba(249,115,22,0.05) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    .arch-layer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.5rem;
+    }
+
+    .arch-connector {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 32px;
+        color: var(--trb-text-muted);
+        font-size: 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .arch-connector-line {
+        flex: 1;
+        max-width: 80px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--trb-border), transparent);
+    }
+
+    .arch-node {
+        background: var(--trb-dark-2);
+        border: 1px solid var(--trb-border);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        text-align: center;
+        min-width: 130px;
+        position: relative;
+        transition: all 0.3s;
+        cursor: default;
+    }
+
+    .arch-node:hover {
+        border-color: var(--trb-orange);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(249,115,22,0.15);
+    }
+
+    .arch-node-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .arch-node-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--trb-text);
+        display: block;
+    }
+
+    .arch-node-sub {
+        font-size: 0.65rem;
+        color: var(--trb-text-muted);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .arch-node.highlight {
+        border-color: rgba(230,60,47,0.5);
+        background: rgba(230,60,47,0.05);
+    }
+
+    .arch-arrow {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: var(--trb-text-muted);
+        font-size: 0.7rem;
+        gap: 2px;
+    }
+
+    .arch-arrow i { font-size: 1rem; color: var(--trb-border); }
+
+    /* ── Phase Timeline ── */
+    .phase-card {
+        background: var(--trb-dark-2);
+        border: 1px solid var(--trb-border);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        transition: all 0.2s;
+        height: 100%;
+    }
+
+    .phase-card:hover {
+        border-color: rgba(249,115,22,0.4);
+        box-shadow: 0 4px 16px rgba(249,115,22,0.08);
+    }
+
+    .phase-number {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--trb-text-muted);
+        margin-bottom: 0.25rem;
+    }
+
+    .phase-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--trb-text);
+        margin-bottom: 0.4rem;
+    }
+
+    .phase-desc {
+        font-size: 0.75rem;
+        color: var(--trb-text-muted);
+        line-height: 1.5;
+    }
+
+    .phase-tag {
+        display: inline-block;
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 0.15rem 0.5rem;
+        border-radius: 20px;
+        margin-top: 0.5rem;
+        margin-right: 0.25rem;
+    }
+
+    .tag-data     { background: rgba(59,130,246,0.2);  color: #3B82F6; }
+    .tag-ml       { background: rgba(168,85,247,0.2); color: #A855F7; }
+    .tag-api      { background: rgba(34,197,94,0.2);  color: #22C55E; }
+    .tag-web      { background: rgba(249,115,22,0.2); color: #F97316; }
+    .tag-reg      { background: rgba(230,60,47,0.2);  color: #E63C2F; }
+    .tag-infra    { background: rgba(100,116,139,0.2);color: #64748B; }
+
+    /* ── Tech Stack Grid ── */
+    .tech-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: var(--trb-dark-3);
+        border: 1px solid var(--trb-border);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s;
+    }
+
+    .tech-item:hover {
+        border-color: rgba(230,60,47,0.3);
+    }
+
+    .tech-item-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .tech-name {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--trb-text);
+        display: block;
+    }
+
+    .tech-desc {
+        font-size: 0.7rem;
+        color: var(--trb-text-muted);
+    }
+
+    /* ── Banner ── */
+    .hero-banner {
+        border-radius: 16px;
+        overflow: hidden;
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-banner img {
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .hero-banner-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(13,15,20,0.85) 0%, rgba(13,15,20,0.4) 100%);
+        display: flex;
+        align-items: center;
+        padding: 1.5rem 2rem;
+    }
+
+    .hero-banner h1 {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: white;
+        line-height: 1.2;
+    }
+
+    .hero-banner p {
+        font-size: 0.875rem;
+        color: rgba(255,255,255,0.75);
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero Banner -->
+<div class="hero-banner">
+    <img src="{% static 'img/tribetech-banner.png' %}" alt="TribeTech — Business & IT in The Age of AI">
+    <div class="hero-banner-overlay">
+        <div>
+            <h1>Credit Risk IRB Platform<br><span style="background:var(--trb-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent">TribeTech</span></h1>
+            <p>Plataforma de Risco de Crédito baseada em modelos IRB — PD, LGD, EAD &nbsp;·&nbsp; Conformidade EBA/BCE</p>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Summary Row -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card">
+            <div class="kpi-label">Modelos IRB</div>
+            <div class="kpi-value">3</div>
+            <div class="kpi-delta up"><i class="bi bi-check-circle-fill me-1"></i>PD · LGD · EAD</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card">
+            <div class="kpi-label">Registos Lending Club</div>
+            <div class="kpi-value">2.2M+</div>
+            <div class="kpi-delta up"><i class="bi bi-database-fill me-1"></i>2007–2018</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card">
+            <div class="kpi-label">Fases do Projecto</div>
+            <div class="kpi-value">9</div>
+            <div class="kpi-delta up"><i class="bi bi-layers-fill me-1"></i>Dados → Deploy</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card">
+            <div class="kpi-label">Conformidade</div>
+            <div class="kpi-value">EBA</div>
+            <div class="kpi-delta up"><i class="bi bi-shield-fill-check me-1"></i>Gini · KS · AUC · Brier</div>
+        </div>
+    </div>
+</div>
+
+<!-- Arquitectura -->
+<div class="card-irb mb-4">
+    <div class="card-irb-header">
+        <div class="card-icon red"><i class="bi bi-diagram-3-fill"></i></div>
+        <div>
+            <div class="card-title">Arquitectura do Sistema</div>
+            <div class="card-subtitle">Stack tecnológica completa — desenvolvimento local + deploy Azure</div>
+        </div>
+    </div>
+
+    <div class="arch-diagram">
+        <!-- Layer 1: Data Sources -->
+        <p style="text-align:center;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--trb-text-muted);margin-bottom:0.75rem">
+            Fontes de Dados
+        </p>
+        <div class="arch-layer">
+            <div class="arch-node">
+                <div class="arch-node-icon">📦</div>
+                <span class="arch-node-title">Lending Club</span>
+                <span class="arch-node-sub">2.2M+ empréstimos</span>
+            </div>
+            <div class="arch-node">
+                <div class="arch-node-icon">🦆</div>
+                <span class="arch-node-title">DuckDB</span>
+                <span class="arch-node-sub">ETL em ficheiros 1.6GB+</span>
+            </div>
+        </div>
+
+        <div class="arch-connector">
+            <div class="arch-connector-line"></div>
+            <i class="bi bi-arrow-down" style="font-size:1.2rem;color:var(--trb-border)"></i>
+            <div class="arch-connector-line"></div>
+        </div>
+
+        <!-- Layer 2: Data Store -->
+        <p style="text-align:center;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--trb-text-muted);margin-bottom:0.75rem">
+            Armazenamento
+        </p>
+        <div class="arch-layer">
+            <div class="arch-node highlight">
+                <div class="arch-node-icon">🐘</div>
+                <span class="arch-node-title">PostgreSQL</span>
+                <span class="arch-node-sub">porta 5450</span>
+            </div>
+        </div>
+
+        <div class="arch-connector">
+            <div class="arch-connector-line"></div>
+            <i class="bi bi-arrow-down" style="font-size:1.2rem;color:var(--trb-border)"></i>
+            <div class="arch-connector-line"></div>
+        </div>
+
+        <!-- Layer 3: ML + API -->
+        <p style="text-align:center;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--trb-text-muted);margin-bottom:0.75rem">
+            Modelos & API
+        </p>
+        <div class="arch-layer">
+            <div class="arch-node">
+                <div class="arch-node-icon">🧠</div>
+                <span class="arch-node-title">Modelos IRB</span>
+                <span class="arch-node-sub">PD · LGD · EAD</span>
+            </div>
+            <div class="arch-node highlight">
+                <div class="arch-node-icon">⚡</div>
+                <span class="arch-node-title">FastAPI</span>
+                <span class="arch-node-sub">porta 8090</span>
+            </div>
+            <div class="arch-node">
+                <div class="arch-node-icon">🔬</div>
+                <span class="arch-node-title">MLflow</span>
+                <span class="arch-node-sub">porta 5010</span>
+            </div>
+        </div>
+
+        <div class="arch-connector">
+            <div class="arch-connector-line"></div>
+            <i class="bi bi-arrow-down" style="font-size:1.2rem;color:var(--trb-border)"></i>
+            <div class="arch-connector-line"></div>
+        </div>
+
+        <!-- Layer 4: Dashboard -->
+        <p style="text-align:center;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--trb-text-muted);margin-bottom:0.75rem">
+            Interface Web
+        </p>
+        <div class="arch-layer">
+            <div class="arch-node highlight">
+                <div class="arch-node-icon">🌐</div>
+                <span class="arch-node-title">Django Dashboard</span>
+                <span class="arch-node-sub">porta 8080</span>
+            </div>
+        </div>
+
+        <div class="arch-connector">
+            <div class="arch-connector-line"></div>
+            <i class="bi bi-arrow-down" style="font-size:1.2rem;color:var(--trb-border)"></i>
+            <div class="arch-connector-line"></div>
+        </div>
+
+        <!-- Layer 5: Deploy -->
+        <p style="text-align:center;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--trb-text-muted);margin-bottom:0.75rem">
+            Deploy
+        </p>
+        <div class="arch-layer">
+            <div class="arch-node">
+                <div class="arch-node-icon">🐳</div>
+                <span class="arch-node-title">Docker Compose</span>
+                <span class="arch-node-sub">orquestração local</span>
+            </div>
+            <div class="arch-node">
+                <div class="arch-node-icon">☁️</div>
+                <span class="arch-node-title">Azure App Service</span>
+                <span class="arch-node-sub">link público</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fases do Projecto -->
+<div class="card-irb mb-4">
+    <div class="card-irb-header">
+        <div class="card-icon orange"><i class="bi bi-list-check"></i></div>
+        <div>
+            <div class="card-title">Fases do Projecto</div>
+            <div class="card-subtitle">9 fases do pipeline completo</div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        {% for phase in phases %}
+        <div class="col-sm-6 col-lg-4">
+            <div class="phase-card">
+                <div class="phase-number">Fase {{ phase.num }} · {{ phase.days }}</div>
+                <div class="phase-title">{{ phase.title }}</div>
+                <div class="phase-desc">{{ phase.desc }}</div>
+                <div>
+                    {% for tag in phase.tags %}
+                    <span class="phase-tag tag-{{ tag.type }}">{{ tag.label }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Tech Stack -->
+<div class="card-irb mb-4">
+    <div class="card-irb-header">
+        <div class="card-icon blue"><i class="bi bi-cpu-fill"></i></div>
+        <div>
+            <div class="card-title">Stack Tecnológica</div>
+            <div class="card-subtitle">Ferramentas e bibliotecas utilizadas</div>
+        </div>
+    </div>
+
+    <div class="row g-2">
+        {% for tech in stack %}
+        <div class="col-sm-6 col-lg-4">
+            <div class="tech-item">
+                <div class="tech-item-icon {{ tech.color }}">{{ tech.icon }}</div>
+                <div>
+                    <span class="tech-name">{{ tech.name }}</span>
+                    <span class="tech-desc">{{ tech.desc }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Mapeamento Vaga -->
+<div class="card-irb">
+    <div class="card-irb-header">
+        <div class="card-icon green"><i class="bi bi-briefcase-fill"></i></div>
+        <div>
+            <div class="card-title">Mapeamento — Requisitos da Vaga</div>
+            <div class="card-subtitle">Como cada requisito é coberto pelo projecto</div>
+        </div>
+    </div>
+
+    <div style="overflow-x:auto">
+        <table class="table-irb">
+            <thead>
+                <tr>
+                    <th>Requisito da Vaga</th>
+                    <th>Implementação</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Python + Data Science</td><td>scikit-learn, XGBoost, pandas, numpy</td><td><span style="color:var(--trb-success)"><i class="bi bi-check-circle-fill"></i> Coberto</span></td></tr>
+                <tr><td>SQL Avançado</td><td>PostgreSQL com queries analíticas — portfólio, vintage, safadas</td><td><span style="color:var(--trb-success)"><i class="bi bi-check-circle-fill"></i> Coberto</span></td></tr>
+                <tr><td>Reporting (Power BI)</td><td>Django Dashboard + Chart.js + exportação PDF</td><td><span style="color:var(--trb-success)"><i class="bi bi-check-circle-fill"></i> Coberto</span></td></tr>
+                <tr><td>Databricks</td><td>MLflow local — tracking de experimentos idêntico</td><td><span style="color:var(--trb-success)"><i class="bi bi-check-circle-fill"></i> Coberto</span></td></tr>
+                <tr><td>Modelos IRB (PD, LGD, EAD)</td><td>Fase 2 inteira dedicada — Logistic, XGBoost, Beta regression</td><td><span style="color:var(--trb-success)"><i class="bi bi-check-circle-fill"></i> Coberto</span></td></tr>
+                <tr><td>Conformidade EBA/BCE</td><td>Gini, KS, AUC, Brier Score + relatório PDF estilo EBA</td><td><span style="color:var(--trb-success)"><i class="bi bi-check-circle-fill"></i> Coberto</span></td></tr>
+                <tr><td>Documentação + Auditorias</td><td>model_validation_report.pdf + Swagger UI automático</td><td><span style="color:var(--trb-success)"><i class="bi bi-check-circle-fill"></i> Coberto</span></td></tr>
+                <tr><td>Monitorização de Modelos</td><td>Dashboard de monitorização com PSI e drift detection</td><td><span style="color:var(--trb-success)"><i class="bi bi-check-circle-fill"></i> Coberto</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Dados das fases injectados via context (fallback se views não passarem)
+</script>
+{% endblock %}
