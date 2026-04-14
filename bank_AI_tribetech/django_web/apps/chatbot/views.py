@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "deepseek/deepseek-v3-0324")
+MODEL_NAME = os.getenv("MODEL_NAME", "deepseek/deepseek-v3.2")
 FASTAPI_URL = os.getenv("FASTAPI_URL", "http://localhost:8090")
 
 # ---------------------------------------------------------------------------
@@ -242,7 +242,6 @@ def api_chat(request):
             "model": MODEL_NAME,
             "messages": full_messages,
             "tools": TOOLS,
-            "tool_choice": "auto",
             "temperature": 0.3,
             "max_tokens": 1024,
         }
