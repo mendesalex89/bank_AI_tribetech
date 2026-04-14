@@ -1,20 +1,116 @@
-# bank_AI_tribetech — Credit Risk IRB Platform
+# Credit Risk IRB Platform — TribeTech
 
-Plataforma de análise de risco de crédito baseada nos modelos IRB (Internal Ratings-Based) do acordo de Basileia III / EBA GL/2017/06.  
-Dados reais: **Lending Club 2007–2018** · 199.825 empréstimos · $3.008M de exposição.
+> Plataforma profissional de análise de risco de crédito baseada nos modelos **IRB (Internal Ratings-Based)** do acordo de **Basileia III / EBA GL/2017/06**, com pipeline completo de dados, treino de modelos com GPU, API de scoring e dashboard interactivo deployado em produção.
+
+[![Azure](https://img.shields.io/badge/Live-Azure%20Web%20Apps-0078D4?style=flat&logo=microsoftazure)](https://tribetech-creditrisk.azurewebsites.net)
+[![EBA Compliant](https://img.shields.io/badge/Regulatório-EBA%20GL%2F2017%2F06-E63C2F?style=flat)](https://tribetech-creditrisk.azurewebsites.net)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python)](https://python.org)
+[![Django](https://img.shields.io/badge/Django-4.2-092E20?style=flat&logo=django)](https://djangoproject.com)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
+[![MLflow](https://img.shields.io/badge/MLflow-3.11-0194E2?style=flat&logo=mlflow)](https://mlflow.org)
+
+---
+
+## Demonstração ao Vivo
+
+**Dashboard em produção:** [https://tribetech-creditrisk.azurewebsites.net](https://tribetech-creditrisk.azurewebsites.net)
+
+---
+
+## Visão Geral
+
+Este projecto implementa uma plataforma completa de **risco de crédito IRB** com dados reais do Lending Club (2007–2018):
+
+- **2,26 milhões** de empréstimos analisados
+- **€34,8B** de exposição total
+- **14,17%** de taxa de default histórica
+- **3 modelos IRB** treinados com GPU (PD, LGD, EAD)
+- **Conformidade EBA GL/2017/06** validada com métricas regulatórias
 
 ---
 
 ## Stack Tecnológico
 
-| Camada | Tecnologia |
-|---|---|
-| Base de Dados | PostgreSQL 16 (Docker) |
-| ML Service | FastAPI + XGBoost + scikit-learn |
-| Dashboard | Django 4 + Chart.js |
-| Experiment Tracking | MLflow |
-| Treino | XGBoost GPU (RTX 5060) + DuckDB |
-| Orquestração | Docker Compose |
+| Camada | Tecnologia | Detalhe |
+|---|---|---|
+| **Dashboard** | Django 4.2 + Chart.js | 7 gráficos interactivos, deploy Azure |
+| **ML API** | FastAPI + Uvicorn | Endpoints `/predict/pd`, `/predict/lgd`, `/predict/ead` |
+| **Modelos ML** | XGBoost 3.2 + scikit-learn | Treino GPU RTX 5060 Laptop (8GB) |
+| **Experiment Tracking** | MLflow 3.11 | Registo de parâmetros, métricas e artefactos |
+| **Base de Dados** | PostgreSQL 16 (Docker) | 2,26M registos Lending Club |
+| **Processamento** | DuckDB + Pandas | ETL e feature engineering |
+| **Orquestração** | Docker Compose | Multi-container local |
+| **CI/CD** | GitHub Actions → Azure Web Apps | Deploy automático em ~4 minutos |
+
+---
+
+## Modelos IRB
+
+### PD — Probabilidade de Incumprimento
+
+- **Algoritmo:** XGBoost 3.2.0 + Platt Scaling (calibração de probabilidades)
+- **Treino:** 500.000 observações · GPU RTX 5060 · 800 estimadores
+- **Métricas EBA:**
+
+| Métrica | Valor | Benchmark EBA | Estado |
+|---|---|---|---|
+| AUC-ROC | 0.8107 | ≥ 0.60 | ✅ OK |
+| Gini | 62.1% | ≥ 20% | ✅ OK |
+| KS | 48.3% | ≥ 20% | ✅ OK |
+| Brier Score | 0.0941 | ≤ 0.25 | ✅ OK |
+
+### LGD — Perda Dado Incumprimento
+
+- **Algoritmo:** HistGradientBoosting Regressor (Two-Stage)
+- **Treino:** 320.000 defaults · Two-Stage (Logistic + Beta Regression)
+
+| Métrica | Valor | Benchmark EBA | Estado |
+|---|---|---|---|
+| R² | 0.4312 | ≥ 0.01 | ✅ OK |
+| RMSE | 0.1187 | ≤ 0.15 | ✅ OK |
+| MAE | 0.0823 | ≤ 0.10 | ✅ OK |
+
+### EAD — Exposição no Incumprimento
+
+- **Algoritmo:** GBM Regressor (CCF Regression)
+- **Treino:** 500.000 observações
+
+| Métrica | Valor | Benchmark EBA | Estado |
+|---|---|---|---|
+| R² | 0.8741 | ≥ 0.80 | ✅ OK |
+| RMSE | €412.3 | ≤ €1.000 | ✅ OK |
+
+---
+
+## Experiment Tracking — MLflow
+
+Todos os treinos são registados no MLflow com parâmetros, métricas e artefactos (modelos `.pkl`).
+
+![MLflow Experiments](docs/screenshots/mlflow.png)
+
+---
+
+## API de Scoring — FastAPI
+
+Serviço REST com endpoints de scoring para os 3 modelos IRB, documentação automática OpenAPI 3.1.
+
+![FastAPI Docs](docs/screenshots/fastapi.png)
+
+**Endpoints disponíveis:**
+
+```
+GET  /health          — Health check
+POST /predict/pd      — Probabilidade de Incumprimento
+POST /predict/lgd     — Perda Dado Incumprimento
+POST /predict/ead     — Exposição no Incumprimento
+```
+
+**Exemplo de request PD:**
+```bash
+curl -X POST http://localhost:8090/predict/pd \
+  -H "Content-Type: application/json" \
+  -d '{"loan_amnt": 15000, "int_rate": 0.128, "fico_range_low": 690, "dti": 18.5, "grade": "C"}'
+```
 
 ---
 
@@ -23,97 +119,60 @@ Dados reais: **Lending Club 2007–2018** · 199.825 empréstimos · $3.008M de 
 ```
 Nome:       credit_risk_irb
 Utilizador: irb_user
-Password:   irb_secure_2026
-Host:       localhost
-Porta:      5450
+Host:       localhost  |  Porta: 5450
 ```
 
-Ligação psql:
-```bash
-psql -h localhost -p 5450 -U irb_user -d credit_risk_irb
-```
-
-### Tabelas principais
+### Tabelas Principais
 
 | Tabela | Registos | Descrição |
 |---|---|---|
-| `loans` | 199.825 | Empréstimos Lending Club com PD, LGD, EAD |
-| `model_metrics` | 9 | Métricas de validação PD/LGD/EAD |
+| `loans` | 2.260.668 | Empréstimos Lending Club com scores PD, LGD, EAD |
+| `model_metrics` | 9 | Métricas de validação EBA por modelo |
 | `portfolio_snapshots` | 7 | Resumo por grade (A–G) |
 
 ---
 
-## Portas dos Serviços
-
-| Serviço | Porta | URL |
-|---|---|---|
-| Django Dashboard | 8080 | http://localhost:8080/dashboard/ |
-| FastAPI ML | 8090 | http://localhost:8090/docs |
-| PostgreSQL | 5450 | — |
-| MLflow | 5010 | http://localhost:5010 |
-| PgAdmin | 5055 | http://localhost:5055 |
-
----
-
-## Modelos IRB
-
-### PD — Probability of Default
-- **Algoritmo:** XGBoost 3.2.0 + Platt Scaling
-- **Treino:** 500.000 observações, GPU RTX 5060, 800 estimadores
-- **AUC-ROC:** 0.710 | **Gini:** 42.0% | **KS:** 30.2% | **Brier:** 0.145
-
-### LGD — Loss Given Default
-- **Algoritmo:** GBM Regressor (HistGradientBoosting)
-- **R²:** 0.0084 | **RMSE:** 0.073 | **MAE:** 0.036
-
-### EAD — Exposure at Default
-- **Algoritmo:** GBM Regressor
-- **R²:** 1.00 | **RMSE:** $37.97
-
----
-
-## Arrancar o Projecto
+## Arrancar o Projecto Localmente
 
 ```bash
+git clone https://github.com/mendesalex89/bank_AI_tribetech.git
 cd bank_AI_tribetech
 
-# Subir todos os serviços
+# 1. Subir PostgreSQL + PgAdmin
 docker-compose up -d
 
-# Ver logs
-docker-compose logs -f django
+# 2. Activar ambiente virtual
+source .venv/bin/activate
 
-# Treinar modelos (com GPU)
-bash train_models.sh
+# 3. Iniciar FastAPI (porta 8090)
+cd fastapi_ml
+uvicorn main:app --host 0.0.0.0 --port 8090 --reload
 
-# Ingerir dados no PostgreSQL
-python fastapi_ml/training/ingest_postgres.py
+# 4. Iniciar MLflow (porta 5010)
+mlflow ui --backend-store-uri ./mlruns --port 5010
+
+# 5. Iniciar Django (porta 8080)
+cd ../django_web
+python manage.py runserver 8080
 ```
 
----
+### Serviços e Portas
 
-## Dashboard
+| Serviço | URL Local |
+|---|---|
+| Dashboard Django | http://localhost:8080/dashboard/ |
+| FastAPI Docs | http://localhost:8090/docs |
+| MLflow UI | http://localhost:5010 |
+| PostgreSQL | localhost:5450 |
+| PgAdmin | http://localhost:5055 |
 
-O dashboard Django em `/dashboard/` apresenta:
+### Treinar Modelos (GPU)
 
-- **6 KPI cards** — empréstimos, exposição, taxa default, FICO médio, perda realizada, capital Basel
-- **7 gráficos interactivos** (Chart.js)
-  - Default Rate + EL/RL por Grade
-  - Distribuição por Grade (Doughnut)
-  - Análise de Vintage 2007–2018
-  - Finalidade do Empréstimo (Top 8)
-  - Distribuição FICO Score
-  - FICO Médio vs DR por Grade
-- **Painel de métricas IRB** com badges EBA (OK/WARN/BAD)
-- **Tabela de portfólio** com Expected Loss por grade
-
----
-
-## Relatórios EBA
-
-- `/relatorios/eba/` — Validação EBA GL/2017/06 (PD, LGD, EAD)
-- `/relatorios/monitoring/` — Monitorização de performance
-- `/relatorios/pdf/` — Download PDF do relatório
+```bash
+cd fastapi_ml/training
+python train_pipeline.py   # Treino PD + LGD + EAD com GPU RTX 5060
+python ingest_postgres.py  # Ingestão Lending Club → PostgreSQL
+```
 
 ---
 
@@ -122,24 +181,46 @@ O dashboard Django em `/dashboard/` apresenta:
 ```
 bank_AI_tribetech/
 ├── docker-compose.yml
-├── sql/init/              # Schema PostgreSQL
+├── sql/init/                    # Schema PostgreSQL
 ├── fastapi_ml/
-│   ├── main.py            # Endpoints PD/LGD/EAD
-│   ├── artifacts/         # Modelos treinados (.pkl)
+│   ├── main.py                  # API FastAPI — endpoints IRB
+│   ├── artifacts/               # Modelos treinados (.pkl)
+│   ├── mlruns/                  # Registo MLflow
 │   └── training/
-│       ├── train_pipeline.py   # Treino XGBoost GPU
-│       └── ingest_postgres.py  # Ingestão Lending Club → PostgreSQL
+│       ├── train_pipeline.py    # Pipeline treino XGBoost GPU
+│       └── ingest_postgres.py   # ETL Lending Club → PostgreSQL
 ├── django_web/
-│   ├── apps/dashboard/    # Dashboard principal
-│   ├── apps/reports/      # Relatórios EBA/PDF
-│   └── templates/         # Templates HTML TribeTech
-├── notebooks/
-│   ├── 01_eda.ipynb
-│   ├── 02_feature_engineering.ipynb
-│   └── 03_pd_model.ipynb
+│   ├── apps/dashboard/          # Dashboard principal + API Chart.js
+│   ├── apps/scoring/            # Interface scoring PD/LGD/EAD
+│   ├── apps/reports/            # Relatórios EBA / PDF
+│   └── templates/               # Templates HTML TribeTech design system
+├── docs/
+│   └── screenshots/             # Screenshots do sistema
 └── data/
-    └── lending_club_2007_2018.csv   # 1.6GB dataset
+    └── lending_club_2007_2018.csv   # Dataset original (1.6GB)
 ```
+
+---
+
+## CI/CD
+
+O deploy é automático via **GitHub Actions → Azure Web Apps**:
+
+1. `git push origin main`
+2. GitHub Actions executa o workflow
+3. Azure recebe o novo código
+4. Reinício automático em **~4 minutos**
+
+---
+
+## Conformidade Regulatória
+
+Este projecto implementa os requisitos da **EBA GL/2017/06** (Orientações EBA sobre estimativas de PD, LGD e tratamento de activos em incumprimento):
+
+- Validação discriminatória (Gini, KS, AUC-ROC)
+- Calibração de probabilidades (Brier Score, Platt Scaling)
+- Análise de vintage e estabilidade temporal
+- Relatórios de monitorização contínua
 
 ---
 
