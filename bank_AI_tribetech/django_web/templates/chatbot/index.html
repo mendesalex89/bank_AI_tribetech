@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Chatbot IRB{% endblock %}
+{% block nav_chatbot %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--topbar-height) - 3rem);
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.chat-bubble {
+    display: flex;
+    gap: 0.75rem;
+    max-width: 85%;
+    animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.chat-bubble.user  { align-self: flex-end; flex-direction: row-reverse; }
+.chat-bubble.bot   { align-self: flex-start; }
+
+.bubble-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; flex-shrink: 0;
+}
+.bot  .bubble-avatar { background: var(--trb-gradient); color: white; }
+.user .bubble-avatar { background: var(--trb-dark-4); color: var(--trb-text); border: 1px solid var(--trb-border); }
+
+.bubble-content {
+    background: var(--trb-dark-2);
+    border: 1px solid var(--trb-border);
+    border-radius: 14px;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--trb-text);
+}
+.user .bubble-content {
+    background: var(--trb-dark-3);
+    border-color: var(--trb-orange);
+}
+.bubble-content strong { color: var(--trb-orange); }
+.bubble-content code {
+    background: var(--trb-dark-4);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--trb-success);
+}
+
+/* Métricas IRB inline */
+.metric-row {
+    display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem;
+}
+.metric-chip {
+    background: var(--trb-dark-4);
+    border: 1px solid var(--trb-border);
+    border-radius: 8px;
+    padding: 0.35rem 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+}
+.metric-chip .label { color: var(--trb-text-muted); font-size: 0.65rem; text-transform: uppercase; display: block; }
+.metric-chip .value { color: var(--trb-text); font-weight: 700; }
+
+/* Input área */
+.chat-input-area {
+    padding: 1rem 0 0;
+    border-top: 1px solid var(--trb-border);
+}
+.chat-input-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+.chat-input {
+    flex: 1;
+    background: var(--trb-dark-2);
+    border: 1px solid var(--trb-border);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    color: var(--trb-text);
+    font-size: 0.875rem;
+    font-family: 'Inter', sans-serif;
+    resize: none;
+    outline: none;
+    min-height: 48px;
+    max-height: 140px;
+    transition: border-color 0.2s;
+}
+.chat-input:focus { border-color: var(--trb-orange); }
+.chat-input::placeholder { color: rgba(255,255,255,0.35); }
+
+.btn-send {
+    background: var(--trb-gradient);
+    border: none;
+    border-radius: 12px;
+    width: 48px; height: 48px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 1.1rem;
+    cursor: pointer; transition: opacity 0.2s;
+    flex-shrink: 0;
+}
+.btn-send:hover { opacity: 0.85; }
+.btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.chat-hints {
+    display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;
+}
+.hint-chip {
+    background: var(--trb-dark-3);
+    border: 1px solid var(--trb-border);
+    border-radius: 20px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.72rem;
+    color: var(--trb-text);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.hint-chip:hover { border-color: var(--trb-orange); color: var(--trb-orange); }
+
+.typing-indicator {
+    display: flex; gap: 4px; align-items: center; padding: 0.5rem 0;
+}
+.typing-indicator span {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--trb-orange);
+    animation: bounce 1.2s infinite;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+    <div>
+        <h1 class="page-title">Assistente <span>IRB</span></h1>
+        <p class="page-subtitle">Análise de risco em linguagem natural · DeepSeek V3 · Tool Use · EBA GL/2017/06</p>
+    </div>
+    <span class="badge-regulatory"><i class="bi bi-robot me-1"></i>AI Agent</span>
+</div>
+
+<div class="chat-container">
+    <!-- Mensagens -->
+    <div class="chat-messages" id="chatMessages">
+        <!-- Mensagem de boas-vindas -->
+        <div class="chat-bubble bot">
+            <div class="bubble-avatar"><i class="bi bi-robot"></i></div>
+            <div class="bubble-content">
+                Olá! Sou o assistente de risco de crédito IRB da <strong>TribeTech</strong>.<br><br>
+                Posso analisar empréstimos e calcular <strong>PD</strong>, <strong>LGD</strong> e <strong>EAD</strong> em tempo real, ou responder perguntas sobre o portfólio de <strong>199.850 empréstimos</strong> reais do Lending Club.<br><br>
+                Como posso ajudar?
+            </div>
+        </div>
+    </div>
+
+    <!-- Input -->
+    <div class="chat-input-area">
+        <div class="chat-hints" id="hintChips">
+            <span class="hint-chip" onclick="useHint(this)">Analisa empréstimo €15.000, FICO 690, DTI 20%</span>
+            <span class="hint-chip" onclick="useHint(this)">Qual a grade com maior taxa de default?</span>
+            <span class="hint-chip" onclick="useHint(this)">Mostra a distribuição do portfólio por grade</span>
+            <span class="hint-chip" onclick="useHint(this)">Como funciona o modelo PD?</span>
+        </div>
+        <div class="chat-input-row">
+            <textarea
+                id="chatInput"
+                class="chat-input"
+                placeholder="Descreve um empréstimo ou pergunta sobre o portfólio..."
+                rows="1"
+            ></textarea>
+            <button class="btn-send" id="btnSend" onclick="sendMessage()">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const messagesEl = document.getElementById('chatMessages');
+const inputEl    = document.getElementById('chatInput');
+const btnSend    = document.getElementById('btnSend');
+const history    = [];  // {role, content}
+
+// Auto-resize textarea
+inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 140) + 'px';
+});
+
+// Enter para enviar (Shift+Enter para nova linha)
+inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+function useHint(el) {
+    inputEl.value = el.textContent;
+    inputEl.focus();
+    document.getElementById('hintChips').style.display = 'none';
+}
+
+function addBubble(role, content) {
+    const wrap = document.createElement('div');
+    wrap.className = `chat-bubble ${role}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'bubble-avatar';
+    avatar.innerHTML = role === 'bot'
+        ? '<i class="bi bi-robot"></i>'
+        : '<i class="bi bi-person-fill"></i>';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble-content';
+    bubble.innerHTML = formatMessage(content);
+
+    wrap.appendChild(avatar);
+    wrap.appendChild(bubble);
+    messagesEl.appendChild(wrap);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return bubble;
+}
+
+function addTyping() {
+    const wrap = document.createElement('div');
+    wrap.className = 'chat-bubble bot';
+    wrap.id = 'typing';
+    wrap.innerHTML = `
+        <div class="bubble-avatar"><i class="bi bi-robot"></i></div>
+        <div class="bubble-content">
+            <div class="typing-indicator"><span></span><span></span><span></span></div>
+        </div>`;
+    messagesEl.appendChild(wrap);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function removeTyping() {
+    const t = document.getElementById('typing');
+    if (t) t.remove();
+}
+
+function formatMessage(text) {
+    // Formatar markdown básico
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+}
+
+async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    // Esconder hints
+    document.getElementById('hintChips').style.display = 'none';
+
+    // Mostrar mensagem do utilizador
+    addBubble('user', text);
+    history.push({ role: 'user', content: text });
+
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    btnSend.disabled = true;
+    addTyping();
+
+    try {
+        const res = await fetch('/chatbot/api/chat/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ messages: history }),
+        });
+
+        const data = await res.json();
+        removeTyping();
+
+        const reply = data.reply || data.error || 'Erro ao processar resposta.';
+        addBubble('bot', reply);
+        history.push({ role: 'assistant', content: reply });
+
+    } catch (err) {
+        removeTyping();
+        addBubble('bot', '**Erro de ligação.** Verifica se o servidor está activo.');
+    } finally {
+        btnSend.disabled = false;
+        inputEl.focus();
+    }
+}
+
+function getCookie(name) {
+    const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+    return v ? v[2] : '';
+}
+</script>
+{% endblock %}

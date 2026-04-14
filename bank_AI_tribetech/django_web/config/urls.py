@@ -20,6 +20,7 @@ urlpatterns = [
     path("dashboard/", include("apps.dashboard.urls")),
     path("scoring/", include("apps.scoring.urls")),
     path("relatorios/", include("apps.reports.urls")),
+    path("chatbot/", include("apps.chatbot.urls")),
 ]
 
 if settings.DEBUG:

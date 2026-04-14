@@ -630,6 +630,13 @@
             <span class="sidebar-badge new">CSV</span>
         </a>
 
+        <div class="sidebar-section">IA</div>
+        <a href="{% url 'chatbot' %}" class="sidebar-item {% block nav_chatbot %}{% endblock %}">
+            <i class="bi bi-robot"></i>
+            <span>Assistente IRB</span>
+            <span class="sidebar-badge new">AI</span>
+        </a>
+
         <div class="sidebar-section">Regulatório</div>
         <a href="{% url 'reports_eba' %}" class="sidebar-item {% block nav_reports %}{% endblock %}">
             <i class="bi bi-file-earmark-pdf-fill"></i>

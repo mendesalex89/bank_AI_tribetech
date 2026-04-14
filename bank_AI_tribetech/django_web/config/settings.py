@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "apps.dashboard",
     "apps.scoring",
     "apps.reports",
+    "apps.chatbot",
 ]
 
 MIDDLEWARE = [
