@@ -9,8 +9,8 @@ on:
 env:
   ACR_LOGIN_SERVER: tribetech2026irb.azurecr.io
   RESOURCE_GROUP: rg-creditrisk-irb
-  DJANGO_APP:  tribetech-irb-django
-  FASTAPI_APP: tribetech-irb-fastapi
+  DJANGO_APP:  tribetech-creditrisk
+  FASTAPI_APP: tribetech-creditrisk-api
 
 jobs:
   # ─────────────────────────────────────────────
@@ -84,7 +84,7 @@ jobs:
       - name: Verificar saúde Django
         run: |
           sleep 30
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://tribetech-irb-django.azurewebsites.net/health/ || echo "000")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://tribetech-creditrisk.azurewebsites.net/health/ || echo "000")
           echo "Django status: $STATUS"
           if [[ "$STATUS" != "200" ]]; then
             echo "::warning::Django health check retornou $STATUS"
@@ -92,7 +92,7 @@ jobs:
 
       - name: Verificar saúde FastAPI
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://tribetech-irb-fastapi.azurewebsites.net/health || echo "000")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://tribetech-creditrisk-api.azurewebsites.net/health || echo "000")
           echo "FastAPI status: $STATUS"
           if [[ "$STATUS" != "200" ]]; then
             echo "::warning::FastAPI health check retornou $STATUS"
