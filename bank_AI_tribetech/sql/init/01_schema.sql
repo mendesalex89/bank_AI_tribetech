@@ -3,15 +3,14 @@
 -- TribeTech | 2026
 -- =============================================================================
 
--- Extensões
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
+-- Extensão uuid (suportada localmente e em Azure)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- =============================================================================
 -- TABELA: loans (dados base Lending Club)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS loans (
-    id                  UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     loan_id             BIGINT UNIQUE,
     loan_amnt           NUMERIC(12,2),
     funded_amnt         NUMERIC(12,2),
@@ -55,7 +54,7 @@ CREATE TABLE IF NOT EXISTS loans (
 -- TABELA: model_predictions (scoring em tempo real)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS model_predictions (
-    id              UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     loan_ref        VARCHAR(100),
     model_type      VARCHAR(10) NOT NULL,  -- 'PD', 'LGD', 'EAD'
     model_version   VARCHAR(20),
@@ -70,7 +69,7 @@ CREATE TABLE IF NOT EXISTS model_predictions (
 -- TABELA: model_metrics (métricas regulatórias EBA)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS model_metrics (
-    id              UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     model_type      VARCHAR(10) NOT NULL,
     model_version   VARCHAR(20),
     metric_name     VARCHAR(50) NOT NULL,  -- 'gini','ks','auc','brier','psi'
@@ -84,7 +83,7 @@ CREATE TABLE IF NOT EXISTS model_metrics (
 -- TABELA: portfolio_snapshots (monitoring mensal)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS portfolio_snapshots (
-    id                  UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     snapshot_date       DATE NOT NULL,
     grade               VARCHAR(2),
     total_loans         INTEGER,
@@ -101,7 +100,7 @@ CREATE TABLE IF NOT EXISTS portfolio_snapshots (
 -- TABELA: feature_woe (Weight of Evidence para features)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS feature_woe (
-    id              UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     feature_name    VARCHAR(100) NOT NULL,
     bin_label       VARCHAR(100),
     bin_min         NUMERIC,
@@ -119,7 +118,7 @@ CREATE TABLE IF NOT EXISTS feature_woe (
 -- TABELA: batch_scoring_jobs (upload CSV)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS batch_scoring_jobs (
-    id              UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     job_name        VARCHAR(200),
     model_type      VARCHAR(10),
     status          VARCHAR(20) DEFAULT 'pending',  -- pending/running/done/error
