@@ -48,3 +48,7 @@ def home(request):
     ]
 
     return render(request, "home/index.html", {"phases": phases, "stack": stack})
+
+
+def guide(request):
+    return render(request, "home/guide.html")

@@ -1,0 +1,548 @@
+{% extends "base.html" %}
+{% block title %}Guia de Utilização{% endblock %}
+{% block nav_guide %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+    .guide-section {
+        background: var(--trb-dark-2);
+        border: 1px solid var(--trb-border);
+        border-radius: 12px;
+        padding: 1.75rem;
+        margin-bottom: 1.25rem;
+    }
+    .guide-section-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--trb-text);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+    .guide-section-title i {
+        width: 32px; height: 32px;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+    .guide-section-title i.red    { background: rgba(230,60,47,.15); color: var(--trb-red); }
+    .guide-section-title i.orange { background: rgba(249,115,22,.15); color: var(--trb-orange); }
+    .guide-section-title i.blue   { background: rgba(59,130,246,.15); color: var(--trb-info); }
+    .guide-section-title i.green  { background: rgba(34,197,94,.15); color: var(--trb-success); }
+    .guide-section-title i.yellow { background: rgba(245,158,11,.15); color: var(--trb-warning); }
+    .guide-section-title i.purple { background: rgba(168,85,247,.15); color: #A855F7; }
+    .guide-section-title span { font-size: 1rem; }
+
+    .guide-text { font-size: 0.875rem; color: rgba(255,255,255,.75); line-height: 1.7; }
+    .guide-text p { margin-bottom: .6rem; }
+
+    .guide-table { width: 100%; font-size: 0.8rem; border-collapse: collapse; margin: .75rem 0; }
+    .guide-table th {
+        background: var(--trb-dark-3);
+        color: rgba(255,255,255,.5);
+        font-size: .7rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .08em;
+        padding: .6rem .9rem;
+        border-bottom: 1px solid var(--trb-border);
+        text-align: left;
+    }
+    .guide-table td {
+        padding: .6rem .9rem;
+        border-bottom: 1px solid rgba(46,52,72,.6);
+        color: rgba(255,255,255,.8);
+        vertical-align: top;
+    }
+    .guide-table tbody tr:last-child td { border-bottom: none; }
+    .guide-table tbody tr:hover { background: var(--trb-dark-3); }
+    .guide-table td strong { color: #fff; }
+
+    .guide-field-name {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: .75rem;
+        background: var(--trb-dark-4);
+        color: var(--trb-orange);
+        padding: .15rem .5rem;
+        border-radius: 4px;
+        white-space: nowrap;
+    }
+    .guide-tip {
+        background: rgba(59,130,246,.08);
+        border-left: 3px solid var(--trb-info);
+        border-radius: 0 8px 8px 0;
+        padding: .75rem 1rem;
+        font-size: .825rem;
+        color: rgba(255,255,255,.75);
+        margin: .75rem 0;
+    }
+    .guide-tip strong { color: var(--trb-info); }
+    .guide-example {
+        background: var(--trb-dark-3);
+        border-left: 3px solid var(--trb-orange);
+        border-radius: 0 8px 8px 0;
+        padding: .75rem 1rem;
+        font-size: .825rem;
+        color: rgba(255,255,255,.75);
+        margin: .75rem 0;
+    }
+    .guide-example strong { color: var(--trb-orange); }
+    .guide-formula {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: .8rem;
+        background: var(--trb-dark-4);
+        border: 1px solid var(--trb-border);
+        border-radius: 8px;
+        padding: .75rem 1rem;
+        margin: .75rem 0;
+        color: var(--trb-success);
+    }
+    .guide-flow {
+        display: flex;
+        gap: .5rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin: .75rem 0;
+    }
+    .guide-flow-step {
+        background: var(--trb-dark-3);
+        border: 1px solid var(--trb-border);
+        border-radius: 8px;
+        padding: .5rem .9rem;
+        font-size: .8rem;
+        font-weight: 600;
+        color: #fff;
+        display: flex; align-items: center; gap: .4rem;
+    }
+    .guide-flow-arrow { color: var(--trb-orange); font-size: 1rem; }
+
+    .glossary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: .75rem;
+    }
+    .glossary-item {
+        background: var(--trb-dark-3);
+        border: 1px solid var(--trb-border);
+        border-radius: 10px;
+        padding: .9rem 1rem;
+    }
+    .glossary-term {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: .85rem;
+        font-weight: 700;
+        color: var(--trb-orange);
+        margin-bottom: .3rem;
+    }
+    .glossary-def { font-size: .8rem; color: rgba(255,255,255,.7); line-height: 1.5; }
+
+    .nav-toc {
+        background: var(--trb-dark-3);
+        border: 1px solid var(--trb-border);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+    .nav-toc-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.4); margin-bottom: .75rem; }
+    .nav-toc a {
+        display: flex; align-items: center; gap: .6rem;
+        padding: .35rem .5rem; border-radius: 6px;
+        font-size: .825rem; color: rgba(255,255,255,.65);
+        text-decoration: none;
+        transition: all .15s;
+    }
+    .nav-toc a:hover { background: var(--trb-dark-4); color: #fff; }
+    .nav-toc a i { font-size: .85rem; min-width: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title"><span>Guia</span> de Utilização</h1>
+    <p class="page-subtitle">Explicação completa de cada secção, gráfico e análise da plataforma — sem conhecimento prévio necessário.</p>
+</div>
+
+<!-- Índice rápido -->
+<div class="nav-toc">
+    <div class="nav-toc-title">Índice</div>
+    <div class="row g-1">
+        <div class="col-6 col-md-4"><a href="#sec-home"><i class="bi bi-grid-1x2-fill"></i> Início</a></div>
+        <div class="col-6 col-md-4"><a href="#sec-dashboard"><i class="bi bi-bar-chart-fill"></i> Dashboard</a></div>
+        <div class="col-6 col-md-4"><a href="#sec-pd"><i class="bi bi-activity"></i> PD — Prob. Incumprimento</a></div>
+        <div class="col-6 col-md-4"><a href="#sec-lgd"><i class="bi bi-graph-down-arrow"></i> LGD — Perda</a></div>
+        <div class="col-6 col-md-4"><a href="#sec-ead"><i class="bi bi-currency-exchange"></i> EAD — Exposição</a></div>
+        <div class="col-6 col-md-4"><a href="#sec-batch"><i class="bi bi-upload"></i> Scoring em Lote</a></div>
+        <div class="col-6 col-md-4"><a href="#sec-chatbot"><i class="bi bi-robot"></i> Assistente IRB</a></div>
+        <div class="col-6 col-md-4"><a href="#sec-reports"><i class="bi bi-file-earmark-pdf-fill"></i> Relatórios</a></div>
+        <div class="col-6 col-md-4"><a href="#sec-glossary"><i class="bi bi-book-fill"></i> Glossário</a></div>
+    </div>
+</div>
+
+<!-- O que é a plataforma -->
+<div class="guide-section">
+    <div class="guide-text">
+        <p>Esta é uma plataforma profissional de <strong>análise de risco de crédito</strong> que replica o que os bancos fazem internamente para decidir se concedem um empréstimo e quanto capital devem reservar para cobrir possíveis perdas.</p>
+        <p>Usa dados reais de <strong>199.675 empréstimos</strong> do Lending Club (2007–2018) e três modelos de machine learning treinados segundo as regras do regulador europeu (EBA GL/2017/06).</p>
+    </div>
+    <div class="guide-flow">
+        <div class="guide-flow-step"><i class="bi bi-grid-1x2-fill"></i> Início</div>
+        <span class="guide-flow-arrow">→</span>
+        <div class="guide-flow-step"><i class="bi bi-bar-chart-fill"></i> Dashboard</div>
+        <span class="guide-flow-arrow">→</span>
+        <div class="guide-flow-step"><i class="bi bi-activity"></i> Scoring</div>
+        <span class="guide-flow-arrow">→</span>
+        <div class="guide-flow-step"><i class="bi bi-file-earmark-pdf-fill"></i> Reports</div>
+        <span class="guide-flow-arrow">→</span>
+        <div class="guide-flow-step"><i class="bi bi-robot"></i> Chatbot</div>
+    </div>
+</div>
+
+<!-- 1. INÍCIO -->
+<div class="guide-section" id="sec-home">
+    <div class="guide-section-title">
+        <i class="bi bi-grid-1x2-fill blue"></i>
+        <span>1. Início — Visão Geral do Projecto</span>
+    </div>
+    <div class="guide-text">
+        <p>Página de apresentação da plataforma. Resume o projecto, a arquitectura técnica e as fases de desenvolvimento.</p>
+    </div>
+    <table class="guide-table">
+        <thead><tr><th>Elemento</th><th>O que mostra</th></tr></thead>
+        <tbody>
+            <tr><td><strong>4 KPI cards</strong></td><td>Nº de modelos IRB, total de registos analisados, fases do projecto e conformidade regulatória</td></tr>
+            <tr><td><strong>Diagrama de arquitectura</strong></td><td>Como os componentes comunicam: dados → ETL → modelos → API → dashboard → Azure</td></tr>
+            <tr><td><strong>9 Fases do projecto</strong></td><td>Cronograma de desenvolvimento: dados, modelos, validação, API, dashboard, Docker, deploy, docs</td></tr>
+            <tr><td><strong>Stack tecnológico</strong></td><td>Python, XGBoost, FastAPI, Django, PostgreSQL, Docker, Azure, MLflow</td></tr>
+        </tbody>
+    </table>
+    <div class="guide-tip"><strong>Para quê serve:</strong> Num contexto profissional, esta página serve para um gestor ou recrutador perceber rapidamente o âmbito, maturidade e conformidade regulatória do projecto.</div>
+</div>
+
+<!-- 2. DASHBOARD -->
+<div class="guide-section" id="sec-dashboard">
+    <div class="guide-section-title">
+        <i class="bi bi-bar-chart-fill orange"></i>
+        <span>2. Dashboard de Análise — Portfólio Completo</span>
+    </div>
+    <div class="guide-text">
+        <p>Painel central de análise. Mostra como o portfólio de 199.675 empréstimos se comporta em termos de risco, através de 6 KPIs e 8 gráficos interactivos.</p>
+    </div>
+
+    <div class="guide-section-title mt-3" style="font-size:.85rem; margin-bottom:.5rem;">
+        <span>KPIs no topo</span>
+    </div>
+    <table class="guide-table">
+        <thead><tr><th>KPI</th><th>O que significa</th></tr></thead>
+        <tbody>
+            <tr><td><strong>Empréstimos</strong></td><td>Total de registos no portfólio</td></tr>
+            <tr><td><strong>Exposição</strong></td><td>Valor total emprestado (mil milhões €)</td></tr>
+            <tr><td><strong>Taxa de Default</strong></td><td>% de empréstimos que entraram em incumprimento</td></tr>
+            <tr><td><strong>FICO Médio</strong></td><td>Score de crédito médio dos mutuários (580–850)</td></tr>
+            <tr><td><strong>Perda Realizada</strong></td><td>Perdas efectivamente ocorridas (milhões €)</td></tr>
+            <tr><td><strong>Capital Mínimo</strong></td><td>Capital regulatório exigido pelo Basileia III (8% do RWA)</td></tr>
+        </tbody>
+    </table>
+
+    <div class="guide-section-title mt-3" style="font-size:.85rem; margin-bottom:.5rem;">
+        <span>8 Gráficos interactivos</span>
+    </div>
+    <table class="guide-table">
+        <thead><tr><th>Gráfico</th><th>Como ler</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>Taxa de Default por Grade vs Expected Loss</strong></td>
+                <td>Compara incumprimento real com perda esperada prevista. Se a linha e as barras coincidirem, o modelo está bem calibrado.</td>
+            </tr>
+            <tr>
+                <td><strong>Distribuição por Grade</strong></td>
+                <td>Peso de cada grade (A–G) no portfólio. Concentração em F e G é sinal de risco elevado.</td>
+            </tr>
+            <tr>
+                <td><strong>Vintage — Default por Ano</strong></td>
+                <td>Evolução histórica 2007–2018. Picos em 2008–2009 reflectem a crise financeira global.</td>
+            </tr>
+            <tr>
+                <td><strong>Finalidade do Empréstimo</strong></td>
+                <td>Top 8 categorias por volume. "Debt consolidation" é sempre a finalidade dominante.</td>
+            </tr>
+            <tr>
+                <td><strong>Distribuição FICO Score</strong></td>
+                <td>Quanto mais baixo o FICO, maior a taxa de default — a linha sobreposta confirma a correlação.</td>
+            </tr>
+            <tr>
+                <td><strong>FICO Médio vs Default por Grade</strong></td>
+                <td>Valida a consistência do rating: grades piores têm FICO mais baixo e mais default.</td>
+            </tr>
+            <tr>
+                <td><strong>Métricas dos Modelos IRB</strong></td>
+                <td>✅ = aprovado pelo regulador EBA; ❌ = abaixo do limiar mínimo.</td>
+            </tr>
+            <tr>
+                <td><strong>Tabela por Grade</strong></td>
+                <td>Para cada grade A–G: nº de empréstimos, exposição, taxa default, FICO médio e perda esperada.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- 3. PD -->
+<div class="guide-section" id="sec-pd">
+    <div class="guide-section-title">
+        <i class="bi bi-activity red"></i>
+        <span>3a. PD — Probabilidade de Incumprimento</span>
+    </div>
+    <div class="guide-text">
+        <p>Dado um perfil de cliente e empréstimo, calcula a probabilidade de esse cliente entrar em incumprimento.</p>
+    </div>
+    <table class="guide-table">
+        <thead><tr><th>Campo</th><th>O que é</th><th>Exemplo</th></tr></thead>
+        <tbody>
+            <tr><td><span class="guide-field-name">FICO Score</span></td><td>Pontuação de crédito (580–850; maior = melhor)</td><td>720</td></tr>
+            <tr><td><span class="guide-field-name">DTI (%)</span></td><td>Dívida ÷ rendimento mensal (menor = melhor)</td><td>18%</td></tr>
+            <tr><td><span class="guide-field-name">Taxa de Juro</span></td><td>Taxa do empréstimo pedido</td><td>12%</td></tr>
+            <tr><td><span class="guide-field-name">Rendimento Anual</span></td><td>Rendimento bruto anual do cliente</td><td>€60.000</td></tr>
+            <tr><td><span class="guide-field-name">Anos de Emprego</span></td><td>Estabilidade laboral</td><td>5 anos</td></tr>
+            <tr><td><span class="guide-field-name">Finalidade</span></td><td>Para que serve o empréstimo</td><td>Consolidação de dívida</td></tr>
+            <tr><td><span class="guide-field-name">Habitação</span></td><td>Situação habitacional do cliente</td><td>Hipoteca</td></tr>
+        </tbody>
+    </table>
+    <div class="guide-section-title mt-3" style="font-size:.85rem; margin-bottom:.5rem;"><span>Resultados</span></div>
+    <table class="guide-table">
+        <thead><tr><th>Resultado</th><th>O que significa</th></tr></thead>
+        <tbody>
+            <tr><td><strong>Gauge de PD (%)</strong></td><td>0% = sem risco; 100% = incumprimento certo</td></tr>
+            <tr><td><strong>Scorecard</strong></td><td>Pontuação interna do banco (300–850)</td></tr>
+            <tr><td><strong>Grade IRB</strong></td><td>A (melhor) → G (pior)</td></tr>
+            <tr><td><strong>Alerta</strong></td><td>Baixo / Moderado / Alto / Muito Alto Risco</td></tr>
+        </tbody>
+    </table>
+    <div class="guide-example"><strong>Exemplo:</strong> Cliente com FICO 690, DTI 20%, rendimento €50.000 → PD ≈ 12%, Grade C, Risco Moderado.</div>
+</div>
+
+<!-- 4. LGD -->
+<div class="guide-section" id="sec-lgd">
+    <div class="guide-section-title">
+        <i class="bi bi-graph-down-arrow orange"></i>
+        <span>3b. LGD — Perda Dado Incumprimento</span>
+    </div>
+    <div class="guide-text">
+        <p>Assumindo que o cliente já entrou em incumprimento, calcula quanto o banco vai perder efectivamente (depois de recuperações e garantias).</p>
+    </div>
+    <table class="guide-table">
+        <thead><tr><th>Campo</th><th>O que é</th></tr></thead>
+        <tbody>
+            <tr><td><span class="guide-field-name">Montante do Empréstimo</span></td><td>Capital em dívida no momento do incumprimento</td></tr>
+            <tr><td><span class="guide-field-name">Valor da Garantia</span></td><td>Valor de activos dados como garantia (ex: imóvel)</td></tr>
+            <tr><td><span class="guide-field-name">Recuperações Estimadas</span></td><td>Montante que o banco consegue recuperar</td></tr>
+            <tr><td><span class="guide-field-name">Situação Habitacional</span></td><td>Indica se existe imóvel como garantia implícita</td></tr>
+            <tr><td><span class="guide-field-name">Tipo de Crédito</span></td><td>Sem garantia / Com garantia / Hipotecário</td></tr>
+        </tbody>
+    </table>
+    <div class="guide-tip"><strong>Regra geral:</strong> Crédito hipotecário tem LGD baixo (garantia real); crédito sem garantia tem LGD alto (nada a recuperar).</div>
+</div>
+
+<!-- 5. EAD -->
+<div class="guide-section" id="sec-ead">
+    <div class="guide-section-title">
+        <i class="bi bi-currency-exchange green"></i>
+        <span>3c. EAD — Exposição no Incumprimento</span>
+    </div>
+    <div class="guide-text">
+        <p>Calcula qual o valor exacto em dívida no momento em que o cliente entrar em incumprimento. Importante para créditos rotativos (cartão de crédito, linhas de crédito) onde o valor utilizado pode variar.</p>
+    </div>
+    <table class="guide-table">
+        <thead><tr><th>Campo</th><th>O que é</th></tr></thead>
+        <tbody>
+            <tr><td><span class="guide-field-name">Limite de Crédito Total</span></td><td>Máximo que o banco disponibilizou</td></tr>
+            <tr><td><span class="guide-field-name">Montante Comprometido</span></td><td>Parte do limite já aprovada/comprometida</td></tr>
+            <tr><td><span class="guide-field-name">Montante Utilizado</span></td><td>Parte que o cliente efectivamente utilizou</td></tr>
+            <tr><td><span class="guide-field-name">Tipo de Produto</span></td><td>Crédito Rotativo / Prazo / Linha de Crédito</td></tr>
+        </tbody>
+    </table>
+    <div class="guide-formula">EAD = Montante Utilizado + CCF × (Limite Total − Montante Utilizado)</div>
+    <div class="guide-example"><strong>Exemplo:</strong> Limite €20.000, utilizado €8.000, CCF 60% → EAD = €8.000 + 60% × €12.000 = €15.200</div>
+</div>
+
+<!-- 6. BATCH -->
+<div class="guide-section" id="sec-batch">
+    <div class="guide-section-title">
+        <i class="bi bi-upload yellow"></i>
+        <span>3d. Scoring em Lote — Análise de Múltiplos Empréstimos</span>
+    </div>
+    <div class="guide-text">
+        <p>Em vez de analisar um empréstimo de cada vez, permite fazer o upload de um ficheiro CSV e obter os resultados de todos de uma vez.</p>
+    </div>
+    <table class="guide-table">
+        <thead><tr><th>Passo</th><th>O que fazer</th></tr></thead>
+        <tbody>
+            <tr><td><strong>1</strong></td><td>Prepare um CSV com as colunas: <span class="guide-field-name">fico_score, dti, int_rate, annual_inc, loan_amnt, emp_length, purpose, home_ownership</span></td></tr>
+            <tr><td><strong>2</strong></td><td>Arraste o ficheiro para a zona de upload (máx. 50MB)</td></tr>
+            <tr><td><strong>3</strong></td><td>Seleccione os modelos a executar: ✅ PD &nbsp; ✅ LGD &nbsp; ✅ EAD</td></tr>
+            <tr><td><strong>4</strong></td><td>Clique em <strong>Executar Scoring em Lote</strong> e aguarde a barra de progresso</td></tr>
+            <tr><td><strong>5</strong></td><td>Clique em <strong>Exportar CSV</strong> para descarregar os resultados</td></tr>
+        </tbody>
+    </table>
+    <div class="guide-tip"><strong>Uso típico:</strong> Re-scoring periódico de toda a carteira de clientes; stress testing regulatório; análise de portfólios adquiridos.</div>
+</div>
+
+<!-- 7. CHATBOT -->
+<div class="guide-section" id="sec-chatbot">
+    <div class="guide-section-title">
+        <i class="bi bi-robot purple"></i>
+        <span>4. Assistente IRB — IA com Acesso Real aos Dados</span>
+    </div>
+    <div class="guide-text">
+        <p>Assistente de inteligência artificial que responde a perguntas sobre risco de crédito em linguagem natural, com acesso directo aos dados reais do portfólio e aos modelos IRB.</p>
+        <p>Motor: <strong>DeepSeek v3.2</strong> via OpenRouter. O assistente <strong>nunca inventa valores</strong> — todos os números vêm de dados reais ou dos modelos treinados.</p>
+    </div>
+    <table class="guide-table">
+        <thead><tr><th>Tipo de pergunta</th><th>Exemplos</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>Portfólio</strong></td>
+                <td>"Qual a grade com maior taxa de default?"<br>"Mostra a distribuição do portfólio por grade"<br>"Qual a exposição total?"</td>
+            </tr>
+            <tr>
+                <td><strong>Análise individual</strong></td>
+                <td>"Analisa empréstimo €15.000, FICO 690, DTI 20%"<br>"Calcula PD, LGD e EAD para €25.000 a 15% de juro"</td>
+            </tr>
+            <tr>
+                <td><strong>Conceitos IRB</strong></td>
+                <td>"Como funciona o modelo PD?"<br>"O que é o Expected Loss?"<br>"Explica o EBA GL/2017/06"</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- 8. REPORTS -->
+<div class="guide-section" id="sec-reports">
+    <div class="guide-section-title">
+        <i class="bi bi-file-earmark-pdf-fill red"></i>
+        <span>5. Relatórios — Validação e Monitorização Regulatória</span>
+    </div>
+
+    <div class="guide-section-title mt-3" style="font-size:.85rem; margin-bottom:.5rem;"><span>Relatório EBA</span></div>
+    <div class="guide-text">
+        <p>Validação formal dos modelos segundo as normas do regulador europeu. É o documento que um banco apresentaria ao Banco Central Europeu para provar que os seus modelos são fiáveis.</p>
+    </div>
+    <table class="guide-table">
+        <thead><tr><th>Métrica</th><th>O que mede</th><th>Limiar EBA</th><th>Resultado</th></tr></thead>
+        <tbody>
+            <tr><td><strong>Gini</strong></td><td>Capacidade de separar bons de maus pagadores (0–100%; maior = melhor)</td><td>≥ 20%</td><td style="color:var(--trb-success)">✅ 62,1%</td></tr>
+            <tr><td><strong>KS</strong></td><td>Distância máxima entre distribuições de bons e maus pagadores</td><td>≥ 20%</td><td style="color:var(--trb-success)">✅ 48,3%</td></tr>
+            <tr><td><strong>AUC-ROC</strong></td><td>Performance global do classificador (0,5–1,0; 1,0 = perfeito)</td><td>≥ 0,65</td><td style="color:var(--trb-success)">✅ 0,81</td></tr>
+            <tr><td><strong>Brier Score</strong></td><td>Erro de calibração das probabilidades (0 = perfeito)</td><td>≤ 0,25</td><td style="color:var(--trb-success)">✅ 0,094</td></tr>
+        </tbody>
+    </table>
+
+    <div class="guide-section-title mt-3" style="font-size:.85rem; margin-bottom:.5rem;"><span>Monitorização</span></div>
+    <div class="guide-text">
+        <p>Acompanhamento contínuo da performance dos modelos em produção — detecta se os modelos estão a degradar ao longo do tempo.</p>
+    </div>
+    <table class="guide-table">
+        <thead><tr><th>Gráfico</th><th>O que detecta</th></tr></thead>
+        <tbody>
+            <tr><td><strong>Evolução do Gini</strong></td><td>Degradação de performance mês a mês</td></tr>
+            <tr><td><strong>PSI por modelo</strong></td><td>Se a população de clientes mudou (PSI &gt; 0,25 = alerta vermelho)</td></tr>
+            <tr><td><strong>Distribuição de Scores</strong></td><td>Compara scores de treino vs produção actual</td></tr>
+            <tr><td><strong>Backtesting</strong></td><td>PD prevista vs PD observada por grade e trimestre</td></tr>
+        </tbody>
+    </table>
+    <div class="guide-tip"><strong>O PSI é crítico:</strong> Se a população de clientes mudar significativamente (ex: crise económica), o modelo treinado em dados históricos pode deixar de ser válido. PSI baixo = modelo ainda é aplicável.</div>
+</div>
+
+<!-- 9. FLUXO TÍPICO -->
+<div class="guide-section">
+    <div class="guide-section-title">
+        <i class="bi bi-arrow-right-circle-fill blue"></i>
+        <span>Fluxo de Análise Típico</span>
+    </div>
+    <table class="guide-table">
+        <thead><tr><th>Passo</th><th>Onde</th><th>O que fazer</th></tr></thead>
+        <tbody>
+            <tr><td><strong>1</strong></td><td>Dashboard</td><td>Ver KPIs gerais e identificar grades/vintages com maior risco</td></tr>
+            <tr><td><strong>2</strong></td><td>Scoring → PD</td><td>Inserir perfil do cliente → obter PD, Grade e Scorecard</td></tr>
+            <tr><td><strong>3</strong></td><td>Scoring → LGD</td><td>Inserir garantias → obter perda esperada em caso de incumprimento</td></tr>
+            <tr><td><strong>4</strong></td><td>Scoring → EAD</td><td>Calcular exposição exacta no momento do default</td></tr>
+            <tr><td><strong>5</strong></td><td>—</td><td><span class="guide-formula" style="display:inline;padding:.2rem .6rem;">Expected Loss = PD × LGD × EAD</span> → Decisão de crédito</td></tr>
+            <tr><td><strong>6</strong></td><td>Reports → EBA</td><td>Validar conformidade regulatória dos modelos</td></tr>
+            <tr><td><strong>7</strong></td><td>Chatbot</td><td>Perguntas ad-hoc sobre portfólio ou empréstimos específicos</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- GLOSSÁRIO -->
+<div class="guide-section" id="sec-glossary">
+    <div class="guide-section-title">
+        <i class="bi bi-book-fill blue"></i>
+        <span>Glossário de Termos</span>
+    </div>
+    <div class="glossary-grid">
+        <div class="glossary-item">
+            <div class="glossary-term">IRB</div>
+            <div class="glossary-def">Internal Ratings-Based — abordagem de Basileia que permite aos bancos usar modelos internos para calcular requisitos de capital</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">PD</div>
+            <div class="glossary-def">Probability of Default — probabilidade de o cliente não pagar</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">LGD</div>
+            <div class="glossary-def">Loss Given Default — % do valor em dívida que o banco perde quando há incumprimento</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">EAD</div>
+            <div class="glossary-def">Exposure at Default — valor exacto em dívida no momento do incumprimento</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">Expected Loss</div>
+            <div class="glossary-def">PD × LGD × EAD — perda esperada total. Base para o cálculo de provisões e capital regulatório</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">CCF</div>
+            <div class="glossary-def">Credit Conversion Factor — factor que converte compromissos não utilizados em exposição estimada</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">Grade (A–G)</div>
+            <div class="glossary-def">Classificação de risco: A = menor risco, G = maior risco. Base para pricing e provisões</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">FICO Score</div>
+            <div class="glossary-def">Pontuação de crédito americana (580–850). Quanto maior, melhor o historial de crédito</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">DTI</div>
+            <div class="glossary-def">Debt-to-Income Ratio — dívida mensal ÷ rendimento mensal. Quanto menor, melhor</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">Gini</div>
+            <div class="glossary-def">Métrica de discriminação (%). Capacidade do modelo separar bons de maus pagadores. Mínimo EBA: 20%</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">PSI</div>
+            <div class="glossary-def">Population Stability Index — mede se a população de clientes mudou. Alerta se > 0,25</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">EBA</div>
+            <div class="glossary-def">European Banking Authority — regulador bancário europeu. Define as normas dos modelos IRB</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">Basileia III</div>
+            <div class="glossary-def">Acordo internacional de regulação bancária que define os requisitos mínimos de capital</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">RWA</div>
+            <div class="glossary-def">Risk-Weighted Assets — activos ponderados pelo risco. Base para o cálculo de capital mínimo</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">Vintage</div>
+            <div class="glossary-def">Análise por ano de emissão — como se comportaram os empréstimos concedidos em cada ano</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">Backtesting</div>
+            <div class="glossary-def">Comparação das previsões do modelo com o que realmente aconteceu</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

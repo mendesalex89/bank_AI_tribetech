@@ -607,6 +607,10 @@
             <i class="bi bi-bar-chart-fill"></i>
             <span>Dashboard de Análise</span>
         </a>
+        <a href="{% url 'guide' %}" class="sidebar-item {% block nav_guide %}{% endblock %}">
+            <i class="bi bi-book-fill"></i>
+            <span>Guia de Utilização</span>
+        </a>
 
         <div class="sidebar-section">Modelos IRB</div>
         <a href="{% url 'scoring_pd' %}" class="sidebar-item {% block nav_pd %}{% endblock %}">
