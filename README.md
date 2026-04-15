@@ -11,6 +11,10 @@
 
 ---
 
+> **Novo aqui?** Consulte o **[Guia de Utilização](GUIDE.md)** — explica cada aba, cada gráfico e cada análise em linguagem simples, sem conhecimento prévio necessário.
+
+---
+
 ## Demonstração ao Vivo
 
 **Dashboard em produção:** [https://tribetech-creditrisk.azurewebsites.net](https://tribetech-creditrisk.azurewebsites.net)
