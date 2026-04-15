@@ -105,6 +105,9 @@ services:
       DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0,*.azurewebsites.net"
       PYTHONPATH: /app
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      MODEL_NAME: ${MODEL_NAME:-deepseek/deepseek-v3-0324}
     volumes:
       - ./django_web:/app
       - ./data:/app/data

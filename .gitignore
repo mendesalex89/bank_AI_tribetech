@@ -32,6 +32,7 @@ logo-white_tribetech-1.png
 Captura*
 
 # Claude / agente — memória local, não vai para o repo
+CLAUDE.md
 .claude/
 memory/
 .specify/

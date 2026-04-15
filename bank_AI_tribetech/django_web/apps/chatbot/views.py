@@ -212,6 +212,43 @@ Sê directo e conciso."""
 
 
 # ---------------------------------------------------------------------------
+# Detecção de intent para forçar tool use
+# ---------------------------------------------------------------------------
+_PORTFOLIO_KEYWORDS = [
+    "grade", "portfólio", "portfolio", "taxa de default", "taxa default",
+    "distribuição", "vintage", "exposição", "maior taxa", "menor taxa",
+    "dados reais", "quantos empréstimos", "total de empréstimos", "fico médio",
+    "default rate", "overview", "carteira", "risco médio", "top default",
+]
+_SCORING_KEYWORDS = [
+    " pd ", "lgd", "ead", "calcul", "risco de crédito", "perda esperada",
+    "probabilidade de incumprimento", "scoring", "avaliar", "empréstimo de ",
+    "montante de ", "taxa de juro",
+]
+
+
+def _get_tool_choice(messages: list):
+    """Força a tool adequada com base no conteúdo da última mensagem do utilizador."""
+    last_user = next(
+        (m.get("content", "") for m in reversed(messages) if m.get("role") == "user"),
+        "",
+    ).lower()
+
+    if any(kw in last_user for kw in _PORTFOLIO_KEYWORDS):
+        return {"type": "function", "function": {"name": "query_portfolio"}}
+
+    if any(kw in last_user for kw in _SCORING_KEYWORDS):
+        return {"type": "function", "function": {"name": "predict_credit_risk"}}
+
+    # Para perguntas ambíguas mas claramente sobre o domínio, forçar qualquer tool
+    domain_kws = ["empréstimo", "crédito", "fico", "dti", "incumprimento", "risco"]
+    if any(kw in last_user for kw in domain_kws):
+        return "required"
+
+    return "auto"
+
+
+# ---------------------------------------------------------------------------
 # Views Django
 # ---------------------------------------------------------------------------
 def chatbot(request):
@@ -240,13 +277,16 @@ def api_chat(request):
         "X-Title": "TribeTech Credit Risk IRB",
     }
 
+    # Determinar tool_choice para a primeira iteração
+    initial_tool_choice = _get_tool_choice(messages)
+
     # Agentic loop — máximo 5 iterações para tool calls encadeadas
-    for _ in range(5):
+    for iteration in range(5):
         payload = {
             "model": MODEL_NAME,
             "messages": full_messages,
             "tools": TOOLS,
-            "tool_choice": "auto",
+            "tool_choice": initial_tool_choice if iteration == 0 else "auto",
             "temperature": 0.3,
             "max_tokens": 1024,
         }
