@@ -1,4 +1,4 @@
-# Credit Risk IRB Platform — TribeTech
+# Credit Risk IRB Platform — Tribetech
 
 > Plataforma profissional de análise de risco de crédito baseada nos modelos **IRB (Internal Ratings-Based)** do acordo de **Basileia III / EBA GL/2017/06**, com pipeline completo de dados, treino de modelos com GPU, API de scoring e dashboard interactivo deployado em produção.
 
@@ -35,12 +35,15 @@ Este projecto implementa uma plataforma completa de **risco de crédito IRB** co
 |---|---|---|
 | **Dashboard** | Django 4.2 + Chart.js | 7 gráficos interactivos, deploy Azure |
 | **ML API** | FastAPI + Uvicorn | Endpoints `/predict/pd`, `/predict/lgd`, `/predict/ead` |
+| **Chatbot IA** | OpenRouter DeepSeek v3.2 + Tool Use | Agente IRB com acesso real ao portfólio e scoring |
 | **Modelos ML** | XGBoost 3.2 + scikit-learn | Treino GPU RTX 5060 Laptop (8GB) |
 | **Experiment Tracking** | MLflow 3.11 | Registo de parâmetros, métricas e artefactos |
-| **Base de Dados** | PostgreSQL 16 (Docker) | 2,26M registos Lending Club |
+| **Base de Dados (local)** | PostgreSQL 16 via Docker | 199.675 registos Lending Club |
+| **Base de Dados (produção)** | Azure Database for PostgreSQL | Servidor gerido, SSL, 199.675 registos |
 | **Processamento** | DuckDB + Pandas | ETL e feature engineering |
-| **Orquestração** | Docker Compose | Multi-container local |
-| **CI/CD** | GitHub Actions → Azure Web Apps | Deploy automático em ~4 minutos |
+| **Orquestração local** | Docker Compose | Multi-container (PostgreSQL, PgAdmin, MLflow) |
+| **Container Registry** | Azure Container Registry (ACR) | Imagens Django e FastAPI versionadas por commit |
+| **CI/CD** | GitHub Actions → ACR → Azure Web Apps | Build + push imagem + deploy em ~4 minutos |
 
 ---
 
@@ -114,19 +117,44 @@ curl -X POST http://localhost:8090/predict/pd \
 
 ---
 
+## Chatbot IA — Agente IRB
+
+Assistente de risco de crédito com acesso real aos dados, powered by **DeepSeek v3.2 via OpenRouter**.
+
+- Perguntas sobre o portfólio → consulta SQL directa ao PostgreSQL (199.675 empréstimos reais)
+- Análise de empréstimos → chama FastAPI para calcular PD, LGD, EAD em tempo real
+- Nunca inventa valores — usa tool use obrigatório para todas as respostas de domínio
+
+**Exemplos de perguntas:**
+```
+"Qual a grade com maior taxa de default?"
+"Analisa empréstimo €15.000, FICO 690, DTI 20%"
+"Mostra a distribuição do portfólio por grade"
+```
+
+---
+
 ## Base de Dados
 
+### Local (Docker)
 ```
 Nome:       credit_risk_irb
 Utilizador: irb_user
 Host:       localhost  |  Porta: 5450
 ```
 
+### Produção (Azure Database for PostgreSQL)
+```
+Servidor:   irb-postgres-2026.postgres.database.azure.com
+Base:       credit_risk_irb
+SSL:        obrigatório (sslmode=require)
+```
+
 ### Tabelas Principais
 
 | Tabela | Registos | Descrição |
 |---|---|---|
-| `loans` | 199.850 | Empréstimos Lending Club com scores PD, LGD, EAD |
+| `loans` | 199.675 | Empréstimos Lending Club com scores PD, LGD, EAD |
 | `model_metrics` | 9 | Métricas de validação EBA por modelo |
 | `portfolio_snapshots` | 7 | Resumo por grade (A–G) |
 
@@ -144,24 +172,26 @@ Host:       localhost  |  Porta: 5450
 
 ```bash
 git clone https://github.com/mendesalex89/bank_AI_tribetech.git
-cd bank_AI_tribetech
+cd bank_AI_tribetech/bank_AI_tribetech
 
-# 1. Subir PostgreSQL + PgAdmin
-docker-compose up -d
+# Script de arranque único (PostgreSQL + FastAPI + Django)
+bash start_dev.sh
+```
+
+Ou manualmente:
+
+```bash
+# 1. PostgreSQL via Docker
+docker-compose up -d postgres
 
 # 2. Activar ambiente virtual
 source .venv/bin/activate
 
-# 3. Iniciar FastAPI (porta 8090)
-cd fastapi_ml
-uvicorn main:app --host 0.0.0.0 --port 8090 --reload
+# 3. FastAPI (porta 8090)
+cd fastapi_ml && uvicorn main:app --host 0.0.0.0 --port 8090 --reload
 
-# 4. Iniciar MLflow (porta 5010)
-mlflow ui --backend-store-uri ./mlruns --port 5010
-
-# 5. Iniciar Django (porta 8080)
-cd ../django_web
-python manage.py runserver 8080
+# 4. Django (porta 8080)
+cd ../django_web && python manage.py runserver 8080
 ```
 
 ### Serviços e Portas
@@ -210,14 +240,29 @@ bank_AI_tribetech/
 
 ---
 
-## CI/CD
+## CI/CD — Arquitectura de Deploy
 
-O deploy é automático via **GitHub Actions → Azure Web Apps**:
+O deploy é totalmente automático via **GitHub Actions → Azure Container Registry → Azure Web Apps**:
 
-1. `git push origin main`
-2. GitHub Actions executa o workflow
-3. Azure recebe o novo código
-4. Reinício automático em **~4 minutos**
+```
+git push origin main
+        │
+        ▼
+GitHub Actions
+        │
+        ├─ Build imagem Django  → push para ACR (tribetech2026irb.azurecr.io/django)
+        ├─ Build imagem FastAPI → push para ACR (tribetech2026irb.azurecr.io/fastapi)
+        │
+        ▼
+Azure Web Apps (containers Docker)
+        │
+        ├─ tribetech-creditrisk        (Django  — porta 8000)
+        └─ tribetech-creditrisk-api    (FastAPI — porta 8000)
+                │
+                └─ Azure Database for PostgreSQL (irb-postgres-2026)
+```
+
+**Tempo total:** ~4 minutos do `push` ao deploy em produção.
 
 ---
 
@@ -232,4 +277,4 @@ Este projecto implementa os requisitos da **EBA GL/2017/06** (Orientações EBA 
 
 ---
 
-*TribeTech · Credit Risk IRB Platform · 2026*
+*Tribetech · Credit Risk IRB Platform · 2026*
